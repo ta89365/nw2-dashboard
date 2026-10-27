@@ -83,6 +83,7 @@ body.night .who{background:#24364F;color:#C3D4FF}
         <button class="tab" data-mode="work" type="button">上班</button>
         <button class="tab" data-mode="evening" type="button">晚上</button>
         <button class="tab" id="refresh" type="button" aria-label="重新整理">↻</button>
+        <button class="tab" id="fs" type="button">全螢幕</button>
       </nav>
       <div class="status" id="status"></div>
     </div>
@@ -225,12 +226,21 @@ $('loginForm').addEventListener('submit', (e) => { e.preventDefault(); key = $('
 document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.mode) { mode = b.dataset.mode; store.set('nw2.mode', mode); render(); return; }
+  if (b.id === 'fs') { toggleFs(); return; }
   if (b.id === 'refresh') { act('refresh'); setTimeout(load, 8000); return; }
   if (b.dataset.act && b.dataset.id) { b.disabled = true; act(b.dataset.act, b.dataset.id); }
 });
 // Keep the screen on while the page is visible.
 async function wake() { try { await navigator.wakeLock?.request('screen'); } catch {} }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); load(); } });
+// Full screen from a button (a page cannot minimize its own window: leave full screen, then use the title bar's — button).
+const fsOn = () => !!document.fullscreenElement;
+async function toggleFs() { try { if (fsOn()) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch {} }
+const fsLabel = () => { $('fs').textContent = fsOn() ? '離開全螢幕' : '全螢幕'; };
+document.addEventListener('fullscreenchange', fsLabel);
+// After an automatic start the window is only maximized (browsers allow full screen only after a tap): the first tap anywhere enters it.
+let firstTap = true;
+document.addEventListener('pointerdown', (e) => { if (!firstTap) return; firstTap = false; if (!fsOn() && !e.target.closest('#fs, #login')) toggleFs(); }, { capture: true });
 wake(); tick(); render(); load(); setInterval(load, POLL_MS);
 // Reload once a day (04:00) to pick up new versions of this page.
 setInterval(() => { const c = chi(); if (c.h === 4 && c.m < 2) location.reload(); }, 60_000);
