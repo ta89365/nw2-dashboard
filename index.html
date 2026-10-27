@@ -20,6 +20,7 @@ header{display:flex;align-items:flex-end;gap:24px}
 .clock{font-size:88px;font-weight:600;line-height:1;letter-spacing:-2px}
 .date{font-size:19px;color:var(--sub);font-weight:500}
 .grow{flex:1}
+.stack{display:flex;flex-direction:column;gap:18px;height:100%}
 .tabs{display:flex;gap:8px}
 .tab{height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px}
 .tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -115,6 +116,18 @@ const autoMode = () => { const { h, wd } = chi(); if (h >= 18 || h < 6) return '
 const curMode = () => mode === 'auto' ? autoMode() : mode;
 const shortDay = (ymd) => { const d = new Date(ymd + 'T12:00:00Z'); return `${WD[d.getUTCDay()]} ${d.getUTCMonth()+1}/${d.getUTCDate()}`; };
 
+// ═══ 架構（2026-10-27 NW2-Board）══════════════════════════════════════
+// 資料層：load() 抓一次，5 種版面共用同一份 data。
+// 積木層：BLOCKS，每種內容只寫一次（任務卡長相、顏色、按鈕規則在這裡）。改積木 → 所有版面一起變。
+// 版面層：LAYOUTS，每種螢幕 × 每個模式（morning／work／evening）放哪些積木、怎麼排。改版面 → 只影響那一種。
+//   desk    ① 橫向桌面 1920×1080（公司 Dell 27 吋、家裡 S39C、台灣 VX3276）
+//   tall    ② 直立螢幕 1080×1920（公司 Dell 24、家裡 LF24T450F、台灣 23 吋）
+//   compact ③ 小螢幕橫向 ~1368×912（Surface 看板、Dragonfly G4／G2、iPad 橫放）
+//   narrow  ④ 窄螢幕（iPhone、iPad 直放）
+//   tv      ⑤ 客廳電視（網址加 ?view=tv）
+// 網址加 ?view=<名稱> 可強制使用某種版面。
+
+// ── 共用小零件 ──
 function meta(t, opts = {}, inline = false) {
   const bits = [];
   if (t.project) bits.push(esc(t.project));
@@ -129,65 +142,115 @@ function meta(t, opts = {}, inline = false) {
 }
 const initial = (title) => { const m = /^(?:Waiting on|Follow up)\s+([^\s:,&]+)/i.exec(title) || /^([^\s:]+):/.exec(title); return m ? esc([...m[1]].slice(0, 2).join('')) : '…'; };
 const cleanTitle = (title) => esc(title.replace(/^Waiting on\s+/i, ''));
-const rowCheck = (t, opts) => `<div class="row"><button class="check" type="button" aria-label="完成" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div></div>`;
-const rowWho = (t, opts) => `<div class="row"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">明天</button></div>`;
 const list = (items, fn, empty, opts) => items.length ? items.map((t) => fn(t, opts)).join('') : `<div class="empty">${empty}</div>`;
 
-function renderMorning(d) {
-  const hero = d.reminders[0] || d.today_list[0];
+// ── 任務列的幾種樣式（積木裡用 row: '<名稱>' 指定）──
+const ROWS = {
+  // 左邊打勾
+  check: (t, opts) => `<div class="row"><button class="check" type="button" aria-label="完成" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div></div>`,
+  // 左邊人名縮寫、右邊「明天」（要追的人）
+  who: (t, opts) => `<div class="row"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">明天</button></div>`,
+  // 右邊「改明天」＋「完成」
+  both: (t) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">改明天</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">完成</button></div>`,
+  // 左邊時間（明天的行程）
+  timed: (t) => `<div class="row"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || '全天'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`,
+  // 看板式小卡（上班模式的欄）
+  kcard: (t, opts) => {
+    const tags = t.project ? `<span class="tag">${esc(t.project.split(' - ')[0])}</span>` : '';
+    const m = meta({ ...t, project: null }, opts, true);
+    return `<div class="k"><button class="check" style="width:36px;height:36px" type="button" aria-label="完成" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t" style="font-size:15.5px">${esc(t.title)}</div><div style="margin-top:6px">${tags}${m}</div></div></div>`;
+  },
+};
+
+// ── 資料整理：從 API 的 data 算出積木要用的清單 ──
+function derive(d) {
+  const hero = d.reminders[0] || d.today_list[0] || null;
   const rest = d.today_list.filter((t) => t !== hero && t.page_id !== hero?.page_id);
-  const q = d.questions;
-  return `<div style="display:flex;flex-direction:column;gap:18px;height:100%">
-    ${hero ? `<section class="hero"><div style="flex:1;min-width:0"><div class="lab">${hero.time ? `${hero.time} 提醒` : '今天第一件'}</div><div class="ttl">${esc(hero.title)}</div></div>
-      <button class="btn big" type="button" data-act="tomorrow" data-id="${hero.page_id}">改明天</button>
-      <button class="btn primary big" type="button" data-act="done" data-id="${hero.page_id}">完成</button></section>`
-      : `<section class="hero"><div class="ttl">今天沒有排定的事</div></section>`}
-    <div class="grid3" style="flex:1">
-      <section class="card"><h2>今天要做 <span class="n">${rest.length}</span></h2><div class="list">${list(rest, rowCheck, '沒有了')}</div></section>
-      <section class="card"><h2>今天要追 <span class="n">${d.follow_today.length}</span></h2><div class="list">${list(d.follow_today, rowWho, '今天沒有要追的人')}</div></section>
-      <section class="card dark"><h2>NW2 想問你 <span class="n">${q.total}</span></h2><div class="list">${q.items.length ? q.items.map((x) => `<div class="row"><div><div class="m">${esc(x.topic)}</div><div class="t" style="font-weight:400">${esc(x.question)}</div></div></div>`).join('') : '<div class="empty">沒有待答的題目</div>'}</div>
-        <div class="m" style="padding-top:8px">到 NW2-Ask 回答（每天 12:10、20:30 會貼）</div></section>
-    </div></div>`;
+  return { ...d, hero, rest };
 }
 
-function kcard(t, opts) {
-  const tags = t.project ? `<span class="tag">${esc(t.project.split(' - ')[0])}</span>` : '';
-  const m = meta({ ...t, project: null }, opts, true);
-  return `<div class="k"><button class="check" style="width:36px;height:36px" type="button" aria-label="完成" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t" style="font-size:15.5px">${esc(t.title)}</div><div style="margin-top:6px">${tags}${m}</div></div></div>`;
-}
-function renderWork(d) {
-  const col = (name, items, cls, empty, opts) => `<section class="col ${cls}"><h2>${name}<span class="num">${items.length}</span></h2><div class="list">${list(items, kcard, empty, opts)}</div></section>`;
-  return `<div class="grid4">
-    ${col('今天', d.today_list, 'today', '今天的都做完了')}
-    ${col('今天要追', d.follow_today, '', '今天沒有要追的人')}
-    ${col('等回覆', d.waiting, '', '沒有在等的', { showDate: true })}
-    ${col('沒排日期', d.undated, '', '沒有')}
-  </div>`;
+// ── 積木 ──
+// 每塊：(v, o) => HTML。v = derive 過的資料；o = 版面設定裡這塊的選項（items 指定用哪份清單）。
+const BLOCKS = {
+  // 最上面的大卡：第一個提醒，沒有就今天第一件
+  hero: (v) => {
+    const h = v.hero;
+    if (!h) return `<section class="hero"><div class="ttl">今天沒有排定的事</div></section>`;
+    return `<section class="hero"><div style="flex:1;min-width:0"><div class="lab">${h.time ? `${h.time} 提醒` : '今天第一件'}</div><div class="ttl">${esc(h.title)}</div></div>
+      <button class="btn big" type="button" data-act="tomorrow" data-id="${h.page_id}">改明天</button>
+      <button class="btn primary big" type="button" data-act="done" data-id="${h.page_id}">完成</button></section>`;
+  },
+  // 白色卡片＋任務列表。o: title（文字或函式）, items, row, empty, cls, style, count, countStyle, h2Style, opts
+  tasks: (v, o) => {
+    const items = v[o.items];
+    return `<section class="card${o.cls ? ' ' + o.cls : ''}"${o.style ? ` style="${o.style}"` : ''}><h2${o.h2Style ? ` style="${o.h2Style}"` : ''}>${typeof o.title === 'function' ? o.title(v) : o.title} <span class="n"${o.countStyle ? ` style="${o.countStyle}"` : ''}>${o.count ? o.count(items, v) : items.length}</span></h2><div class="list">${list(items, ROWS[o.row], o.empty, o.opts)}</div></section>`;
+  },
+  // 看板式欄（上班模式）。o: title, items, cls, empty, opts
+  column: (v, o) => {
+    const items = v[o.items];
+    return `<section class="col ${o.cls || ''}"><h2>${o.title}<span class="num">${items.length}</span></h2><div class="list">${list(items, ROWS.kcard, o.empty, o.opts)}</div></section>`;
+  },
+  // NW2 想問你（深色卡）
+  questions: (v) => {
+    const q = v.questions;
+    return `<section class="card dark"><h2>NW2 想問你 <span class="n">${q.total}</span></h2><div class="list">${q.items.length ? q.items.map((x) => `<div class="row"><div><div class="m">${esc(x.topic)}</div><div class="t" style="font-weight:400">${esc(x.question)}</div></div></div>`).join('') : '<div class="empty">沒有待答的題目</div>'}</div>
+        <div class="m" style="padding-top:8px">到 NW2-Ask 回答（每天 12:10、20:30 會貼）</div></section>`;
+  },
+  // 接下來 7 天（每天件數）＋之後的
+  week: (v) => `<section><h2 style="margin:0 0 10px;font-size:19px">接下來 7 天</h2><div class="week">${v.week.map((w) => `<div class="day${w.n ? ' busy' : ''}"><div class="d">${shortDay(w.date)}</div><div class="c">${w.n}</div></div>`).join('')}</div>
+        ${v.later.length ? `<div class="m" style="margin-top:8px">之後：${v.later.slice(0, 3).map((t) => `${esc(t.title)}（${shortDay(t.do_date || t.due_date)}）`).join('、')}</div>` : ''}</section>`,
+};
+
+// ── 版面 ──
+// 節點：'積木名稱'、{ block: '積木名稱', ...選項 }、或容器 { cls, style, items: [節點…] }。
+const T = { // 常用的積木設定，各版面共用
+  todayRest:  { block: 'tasks', title: '今天要做', items: 'rest', row: 'check', empty: '沒有了' },
+  followRows: { block: 'tasks', title: '今天要追', items: 'follow_today', row: 'who', empty: '今天沒有要追的人' },
+  colToday:   { block: 'column', title: '今天', items: 'today_list', cls: 'today', empty: '今天的都做完了' },
+  colFollow:  { block: 'column', title: '今天要追', items: 'follow_today', empty: '今天沒有要追的人' },
+  colWaiting: { block: 'column', title: '等回覆', items: 'waiting', empty: '沒有在等的', opts: { showDate: true } },
+  colUndated: { block: 'column', title: '沒排日期', items: 'undated', empty: '沒有' },
+  leftToday:  { block: 'tasks', title: '今天還沒結的', items: 'today_list', row: 'both', empty: '今天的都結了', style: 'flex:1', countStyle: 'color:var(--warn)' },
+  tomorrow:   { block: 'tasks', title: (v) => `明天 · ${shortDay(v.tomorrow)}`, count: (items) => `${items.length} 件`, items: 'tomorrow_list', row: 'timed', empty: '明天沒有排定的事', style: 'padding:26px 30px', h2Style: 'font-size:26px', countStyle: 'font-size:16px' },
+};
+const LAYOUTS = {
+  compact: {
+    morning: { cls: 'stack', items: ['hero', { cls: 'grid3', style: 'flex:1', items: [T.todayRest, T.followRows, 'questions'] }] },
+    work: { cls: 'grid4', items: [T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
+    evening: { cls: 'split', items: [{ cls: 'stack', style: 'gap:22px;min-height:0;height:auto', items: ['week', T.leftToday] }, T.tomorrow] },
+  },
+};
+// 還沒設計的版面先沿用 compact（之後一種一種定）
+for (const k of ['desk', 'tall', 'narrow', 'tv']) LAYOUTS[k] ??= LAYOUTS.compact;
+
+function build(node, v) {
+  if (typeof node === 'string') return BLOCKS[node](v, {});
+  if (node.block) return BLOCKS[node.block](v, node);
+  return `<div${node.cls ? ` class="${node.cls}"` : ''}${node.style ? ` style="${node.style}"` : ''}>${node.items.map((n) => build(n, v)).join('')}</div>`;
 }
 
-function renderEvening(d) {
-  const left = d.today_list;
-  return `<div class="split">
-    <div style="display:flex;flex-direction:column;gap:22px;min-height:0">
-      <section><h2 style="margin:0 0 10px;font-size:19px">接下來 7 天</h2><div class="week">${d.week.map((w) => `<div class="day${w.n ? ' busy' : ''}"><div class="d">${shortDay(w.date)}</div><div class="c">${w.n}</div></div>`).join('')}</div>
-        ${d.later.length ? `<div class="m" style="margin-top:8px">之後：${d.later.slice(0, 3).map((t) => `${esc(t.title)}（${shortDay(t.do_date || t.due_date)}）`).join('、')}</div>` : ''}</section>
-      <section class="card" style="flex:1"><h2>今天還沒結的 <span class="n" style="color:var(--warn)">${left.length}</span></h2><div class="list">
-        ${left.length ? left.map((t) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">改明天</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">完成</button></div>`).join('') : '<div class="empty">今天的都結了</div>'}
-      </div></section>
-    </div>
-    <section class="card" style="padding:26px 30px"><h2 style="font-size:26px">明天 · ${shortDay(d.tomorrow)} <span class="n" style="font-size:16px">${d.tomorrow_list.length} 件</span></h2><div class="list">
-      ${list(d.tomorrow_list, (t) => `<div class="row"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || '全天'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`, '明天沒有排定的事')}
-    </div></section>
-  </div>`;
+// 判斷這個畫面用哪種版面
+function detectLayout() {
+  const forced = new URLSearchParams(location.search).get('view');
+  if (forced && LAYOUTS[forced]) return forced;
+  const w = innerWidth, h = innerHeight;
+  if (w < 760) return 'narrow';
+  if (h > w) return h / w >= 1.55 ? 'tall' : 'narrow';
+  if (w >= 1700) return 'desk';
+  return 'compact';
 }
 
 function render() {
   const m = curMode();
+  const lay = detectLayout();
   document.body.classList.toggle('night', m === 'evening');
+  document.body.dataset.layout = lay;
   document.querySelectorAll('.tab[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
   if (!data) return;
-  $('main').innerHTML = m === 'morning' ? renderMorning(data) : m === 'work' ? renderWork(data) : renderEvening(data);
+  $('main').innerHTML = build(LAYOUTS[lay][m], derive(data));
 }
+let resizeT;
+addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(render, 200); });
 function tick() {
   const c = chi();
   $('clock').textContent = `${String(c.h).padStart(2,'0')}:${String(c.m).padStart(2,'0')}`;
