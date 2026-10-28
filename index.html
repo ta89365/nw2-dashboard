@@ -336,6 +336,9 @@ document.addEventListener('fullscreenchange', fsLabel);
 // After an automatic start the window is only maximized (browsers allow full screen only after a tap): the first tap anywhere enters it.
 let firstTap = true;
 document.addEventListener('pointerdown', (e) => { if (!firstTap) return; firstTap = false; if (!fsOn() && !e.target.closest('#fs, #login')) toggleFs(); }, { capture: true });
+// Ben 2026-10-27: the Surface start-up script sends one harmless key (F13) after opening the board, so it goes full screen
+// by itself. Any first key except Escape counts; never while the key-entry box is showing.
+document.addEventListener('keydown', (e) => { if (!firstTap || e.key === 'Escape' || $('login').style.display === 'flex') return; firstTap = false; if (!fsOn()) toggleFs(); }, { capture: true });
 wake(); tick(); render(); load(); setInterval(load, POLL_MS);
 // Reload once a day (04:00) to pick up new versions of this page.
 setInterval(() => { const c = chi(); if (c.h === 4 && c.m < 2) location.reload(); }, 60_000);
