@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>NW2 看板</title>
+<title>Daily Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -15,7 +15,7 @@ html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans TC',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
 button{font-family:inherit;cursor:pointer}
 .num{font-family:'Space Grotesk',sans-serif}
-#app{height:100vh;display:flex;flex-direction:column;padding:28px 40px 24px;gap:20px}
+#app{height:100vh;display:flex;flex-direction:column;padding:28px 40px 24px;gap:28px}
 header{display:flex;align-items:flex-end;gap:24px}
 .clock{font-size:88px;font-weight:600;line-height:1;letter-spacing:-2px}
 .date{font-size:19px;color:var(--sub);font-weight:500}
@@ -83,34 +83,102 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .hrow.lv-warn .hnote{color:var(--warn)}
 .halert{padding:10px 0;border-top:1px solid var(--line)}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 22px;border-radius:12px;font-size:16px;display:none}
+/* ── Reminders (dash-d3 notices) + weather ── */
+.qchip b{font-family:'Space Grotesk',sans-serif}
+.chips{display:flex;gap:8px}
+.grid3a{display:grid;grid-template-columns:4fr 5fr 4fr;grid-template-rows:minmax(0,1fr);gap:18px;height:100%;min-height:0}
+.stack>.card{flex:1 1 0;min-height:0}
+.stack>.fixed{flex:none}
+/* header stats (Ben 2026-10-28) */
+.stats{flex:1;display:flex;justify-content:center;align-items:flex-end;padding:0 0 2px 12px;min-width:0}
+.stat{padding:2px 20px;border-left:1px solid var(--line);min-width:0}
+.stat:first-child{border-left:none}
+.stat .v{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:600;line-height:1;letter-spacing:-.5px}
+.stat .l{font-size:13px;color:var(--sub);font-weight:500;margin-top:6px;white-space:nowrap}
+.stat .s{font-size:12px;color:var(--sub);margin-top:1px;white-space:nowrap;min-height:16px}
+.stat.bad .v{color:var(--bad)}
+.stat.good .v{color:var(--good)}
+.stat.zero .v{color:var(--sub)}
+body[data-layout="narrow"] .stats>*,body[data-layout="tall"] .stats>*{display:none}
+/* weather */
+.wx2{background:var(--card);border-radius:20px;padding:20px 24px 16px;display:flex;flex-direction:column;gap:14px;flex:none}
+.wx-top{display:flex;align-items:center;gap:14px}
+.wx-top .tmp{font-family:'Space Grotesk',sans-serif;font-size:50px;font-weight:600;line-height:1;letter-spacing:-1.5px}
+.wx-top .lbl{font-size:17px;font-weight:700}
+.wx-top .hl{font-size:14px;color:var(--sub);margin-top:3px}
+.umbpill{align-self:flex-start;display:flex;align-items:center;gap:7px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border-radius:10px;padding:6px 11px;font-size:14px;font-weight:700}
+.norain{font-size:14px;color:var(--sub)}
+.chart{display:flex;flex-direction:column;gap:5px}
+.bars{display:flex;gap:4px;align-items:flex-end;height:52px}
+.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0}
+.bars .b i{display:block;width:100%;background:var(--accent);opacity:.35;border-radius:3px 3px 0 0;min-height:3px}
+.bars .b.hi i{opacity:.85}
+.bars .b span{font-size:11.5px;font-weight:700;color:var(--accent);margin-bottom:2px}
+.wx{background:var(--card);border-radius:20px;padding:16px 22px;display:flex;align-items:center;gap:16px;flex:none}
+.wx svg{flex:none}
+.wx .tmp{font-family:'Space Grotesk',sans-serif;font-size:46px;font-weight:600;line-height:1;letter-spacing:-1px}
+.wx .lbl{font-size:16px;font-weight:700}
+.wx .hl{font-size:14px;color:var(--sub);margin-top:2px}
+.wx .umb{color:var(--accent);font-weight:700;font-size:14.5px;margin-top:4px}
+#panel h2 .n{font-family:'Space Grotesk',sans-serif;color:var(--sub);font-weight:600}
+.wx.tall{flex-direction:column;align-items:stretch;justify-content:center;gap:10px}
+.rain{display:flex;gap:4px;align-items:flex-end;height:38px}
+.rain i{flex:1;background:var(--accent);border-radius:3px 3px 0 0;opacity:.8;min-height:2px}
+.rainx{display:flex;justify-content:space-between;font-size:12px;color:var(--sub)}
+/* schedule */
+.tl{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line);align-items:stretch}
+.tl-time{flex:none;width:56px;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;line-height:1.25}
+.tl-time .e{display:block;font-size:13px;color:var(--sub);font-weight:500}
+.tl-bar{flex:none;width:4px;border-radius:2px;background:var(--accent)}
+.tl.task .tl-bar{background:var(--warn)}
+.tl.s-past{opacity:.42}
+.tl.s-live .tl-time{color:var(--accent)}
+.tl .t{font-size:16.5px}
+.livetag{display:inline-block;font-size:12px;font-weight:700;color:var(--card);background:var(--accent);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.nowline{display:flex;align-items:center;gap:8px;color:var(--bad);font-size:13px;font-weight:700;padding:4px 0}
+.nowline::after{content:'';flex:1;height:2px;background:var(--bad);border-radius:1px}
+.tmr{font-size:13.5px;color:var(--sub);padding-top:10px;border-top:1px dashed var(--line)}
+.check.sm{width:36px;height:36px;border-radius:10px}
+/* FYI */
+.fy-g{font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.06em;padding:12px 0 6px}
+.fy-g:first-child{padding-top:0}
+.fy{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);align-items:flex-start}
+.badge{flex:none;min-width:56px;text-align:center;padding:3px 8px;border-radius:8px;font-size:13px;font-weight:700;background:var(--chip);color:var(--ink);margin-top:1px}
+.badge.today{background:#FCE9DA;color:var(--warn)}
+.badge.new{background:#DDF2E5;color:var(--good)}
+body.night .badge.today{background:#3A2A1C}
+body.night .badge.new{background:#1C3A2A}
+.fy .t{font-size:16px}
+.c1{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.c2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
     <div><div class="date" id="date"></div><div class="clock num" id="clock">--:--</div></div>
-    <div class="grow"></div>
+    <div class="stats" id="stats"></div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
-      <nav class="tabs" aria-label="模式">
-        <button class="tab" data-mode="auto" type="button">自動</button>
-        <button class="tab" data-mode="morning" type="button">早上</button>
-        <button class="tab" data-mode="work" type="button">上班</button>
-        <button class="tab" data-mode="evening" type="button">晚上</button>
-        <button class="tab" id="refresh" type="button" aria-label="重新整理">↻</button>
-        <button class="tab" id="fs" type="button">全螢幕</button>
+      <nav class="tabs" aria-label="Mode">
+        <button class="tab" data-mode="auto" type="button">Auto</button>
+        <button class="tab" data-mode="morning" type="button">Morning</button>
+        <button class="tab" data-mode="work" type="button">Work</button>
+        <button class="tab" data-mode="evening" type="button">Evening</button>
+        <button class="tab" id="refresh" type="button" aria-label="Refresh">↻</button>
+        <button class="tab" id="fs" type="button">Full screen</button>
       </nav>
-      <button class="hchip" id="status" type="button" aria-label="系統健康狀態"><span class="dot"></span><span id="statusText"></span></button>
+      <div class="chips"><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
     </div>
   </header>
   <main id="main"></main>
 </div>
 <div id="login"><form id="loginForm">
-  <div style="font-size:22px;font-weight:700">NW2 看板</div>
-  <label for="key" style="color:var(--sub)">輸入看板金鑰（只要輸入一次，存在這台電腦的瀏覽器）</label>
+  <div style="font-size:22px;font-weight:700">Daily Board</div>
+  <label for="key" style="color:var(--sub)">Enter the board key (one time only; it stays in this browser)</label>
   <input id="key" type="password" autocomplete="off">
-  <button class="btn primary big" type="submit">開始</button>
+  <button class="btn primary big" type="submit">Start</button>
 </form></div>
-<div id="healthPanel"><div class="sheet"><div style="display:flex;align-items:center;gap:12px"><h2 style="margin:0;font-size:22px;flex:1">系統健康</h2><button class="btn" id="healthClose" type="button">關閉</button></div><div class="list" id="healthBody"></div></div></div>
+<div id="healthPanel"><div class="sheet" id="panel"><div style="display:flex;align-items:center;gap:12px"><h2 style="margin:0;font-size:22px;flex:1" id="panelTitle">System Health</h2><button class="btn" id="healthClose" type="button">Close</button></div><div class="list" id="healthBody"></div></div></div>
 <div id="toast"></div>
 <script>
 const API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-dashboard';
@@ -121,7 +189,10 @@ let mode = store.get('nw2.mode') || 'auto';
 let data = null, lastOk = 0, failing = false;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const WD = ['日','一','二','三','四','五','六'];
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WDL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const chi = () => { // Houston wall clock
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour12:false,year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',weekday:'short'}).formatToParts(new Date()).map(x=>[x.type,x.value]));
   return { h: +p.hour % 24, m: +p.minute, mon: +p.month, day: +p.day, wd: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday) };
@@ -149,10 +220,10 @@ function meta(t, opts = {}, inline = false) {
   if (t.project) bits.push(esc(t.project));
   if (t.time) bits.push(t.time);
   let late = false;
-  if (t.late_days > 0) { bits.push(t.late_days === 1 ? '昨天的' : `逾期 ${t.late_days} 天`); late = true; }
+  if (t.late_days > 0) { bits.push(t.late_days === 1 ? 'from yesterday' : `${t.late_days} days overdue`); late = true; }
   else if (opts.showDate && (t.do_date || t.due_date)) bits.push(shortDay(t.do_date || t.due_date));
-  if (t.due_in !== null && t.due_in <= 0 && !(t.late_days > 0)) { bits.push(t.due_in === 0 ? '今天到期' : `過期 ${-t.due_in} 天`); late = true; }
-  else if (t.due_in !== null && t.due_in > 0 && t.due_in <= 3) bits.push(`${t.due_in} 天後到期`);
+  if (t.due_in !== null && t.due_in <= 0 && !(t.late_days > 0)) { bits.push(t.due_in === 0 ? 'due today' : `${plural(-t.due_in, 'day')} past due`); late = true; }
+  else if (t.due_in !== null && t.due_in > 0 && t.due_in <= 3) bits.push(`due in ${plural(t.due_in, 'day')}`);
   const tag = inline ? 'span' : 'div';
   return `<${tag} class="m${late ? ' late' : ''}">${bits.join(' · ')}</${tag}>`;
 }
@@ -163,18 +234,18 @@ const list = (items, fn, empty, opts) => items.length ? items.map((t) => fn(t, o
 // ── 任務列的幾種樣式（積木裡用 row: '<名稱>' 指定）──
 const ROWS = {
   // 左邊打勾
-  check: (t, opts) => `<div class="row"><button class="check" type="button" aria-label="完成" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div></div>`,
+  check: (t, opts) => `<div class="row"><button class="check" type="button" aria-label="Mark done" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div></div>`,
   // 左邊人名縮寫、右邊「明天」（要追的人）
-  who: (t, opts) => `<div class="row"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">明天</button></div>`,
+  who: (t, opts) => `<div class="row"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
   // 右邊「改明天」＋「完成」
-  both: (t) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">改明天</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">完成</button></div>`,
+  both: (t) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">Done</button></div>`,
   // 左邊時間（明天的行程）
-  timed: (t) => `<div class="row"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || '全天'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`,
+  timed: (t) => `<div class="row"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || 'All day'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`,
   // 看板式小卡（上班模式的欄）
   kcard: (t, opts) => {
     const tags = t.project ? `<span class="tag">${esc(t.project.split(' - ')[0])}</span>` : '';
     const m = meta({ ...t, project: null }, opts, true);
-    return `<div class="k"><button class="check" style="width:36px;height:36px" type="button" aria-label="完成" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t" style="font-size:15.5px">${esc(t.title)}</div><div style="margin-top:6px">${tags}${m}</div></div></div>`;
+    return `<div class="k"><button class="check" style="width:36px;height:36px" type="button" aria-label="Mark done" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t" style="font-size:15.5px">${esc(t.title)}</div><div style="margin-top:6px">${tags}${m}</div></div></div>`;
   },
 };
 
@@ -182,7 +253,7 @@ const ROWS = {
 function derive(d) {
   const hero = d.reminders[0] || d.today_list[0] || null;
   const rest = d.today_list.filter((t) => t !== hero && t.page_id !== hero?.page_id);
-  return { ...d, hero, rest };
+  return { ...d, hero, rest, ...deriveNotices(d) };
 }
 
 // ── 積木 ──
@@ -191,10 +262,10 @@ const BLOCKS = {
   // 最上面的大卡：第一個提醒，沒有就今天第一件
   hero: (v) => {
     const h = v.hero;
-    if (!h) return `<section class="hero"><div class="ttl">今天沒有排定的事</div></section>`;
-    return `<section class="hero"><div style="flex:1;min-width:0"><div class="lab">${h.time ? `${h.time} 提醒` : '今天第一件'}</div><div class="ttl">${esc(h.title)}</div></div>
-      <button class="btn big" type="button" data-act="tomorrow" data-id="${h.page_id}">改明天</button>
-      <button class="btn primary big" type="button" data-act="done" data-id="${h.page_id}">完成</button></section>`;
+    if (!h) return `<section class="hero"><div class="ttl">Nothing scheduled today</div></section>`;
+    return `<section class="hero"><div style="flex:1;min-width:0"><div class="lab">${h.time ? `Reminder · ${h.time}` : 'First up today'}</div><div class="ttl">${esc(h.title)}</div></div>
+      <button class="btn big" type="button" data-act="tomorrow" data-id="${h.page_id}">Tomorrow</button>
+      <button class="btn primary big" type="button" data-act="done" data-id="${h.page_id}">Done</button></section>`;
   },
   // 白色卡片＋任務列表。o: title（文字或函式）, items, row, empty, cls, style, count, countStyle, h2Style, opts
   tasks: (v, o) => {
@@ -209,42 +280,147 @@ const BLOCKS = {
   // NW2 想問你（深色卡）
   questions: (v) => {
     const q = v.questions;
-    return `<section class="card dark"><h2>NW2 想問你 <span class="n">${q.total}</span></h2><div class="list">${q.items.length ? q.items.map((x) => `<div class="row"><div><div class="m">${esc(x.topic)}</div><div class="t" style="font-weight:400">${esc(x.question)}</div></div></div>`).join('') : '<div class="empty">沒有待答的題目</div>'}</div>
-        <div class="m" style="padding-top:8px">到 NW2-Ask 回答（每天 12:10、20:30 會貼）</div></section>`;
+    return `<section class="card dark"><h2>Questions <span class="n">${q.total}</span></h2><div class="list">${q.items.length ? q.items.map((x) => `<div class="row"><div><div class="m">${esc(x.topic)}</div><div class="t" style="font-weight:400">${esc(x.question)}</div></div></div>`).join('') : '<div class="empty">No open questions</div>'}</div>
+        <div class="m" style="padding-top:8px">Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div></section>`;
   },
   // 系統健康：9 項即時檢查＋NW2-Daily／巡檢還沒解決的提醒（資料 data.health，唯讀）
   health: (v) => {
     const h = v.health;
-    if (!h) return '<div class="empty">健康資料暫時讀不到（任務資料不受影響）</div>';
+    if (!h) return '<div class="empty">Health data isn\'t available right now (tasks are unaffected)</div>';
     const rows = h.checks.map((c) => `<div class="hrow lv-${c.level}"><span class="dot lv-${c.level}"></span><div class="hname">${esc(c.name)}</div><div class="hnote">${esc(c.note)}</div></div>`).join('');
-    const al = h.alerts.length ? `<h2 style="margin:14px 0 4px;font-size:17px">還沒解決的提醒 <span class="n">${h.alerts.length}</span></h2>` + h.alerts.map((a) => `<div class="halert"><div class="t" style="font-size:15.5px">${esc(a.item)}</div><div class="m">${esc(a.since)} · ${esc(a.source)}</div><div class="m" style="margin-top:4px">${esc(a.detail)}</div></div>`).join('') : '';
+    const al = h.alerts.length ? `<h2 style="margin:14px 0 4px;font-size:17px">Open alerts <span class="n">${h.alerts.length}</span></h2>` + h.alerts.map((a) => `<div class="halert"><div class="t" style="font-size:15.5px">${esc(a.item)}</div><div class="m">${esc(a.since)} · ${esc(a.source)}</div><div class="m" style="margin-top:4px">${esc(a.detail)}</div></div>`).join('') : '';
     return rows + al;
   },
   // 接下來 7 天（每天件數）＋之後的
-  week: (v) => `<section><h2 style="margin:0 0 10px;font-size:19px">接下來 7 天</h2><div class="week">${v.week.map((w) => `<div class="day${w.n ? ' busy' : ''}"><div class="d">${shortDay(w.date)}</div><div class="c">${w.n}</div></div>`).join('')}</div>
-        ${v.later.length ? `<div class="m" style="margin-top:8px">之後：${v.later.slice(0, 3).map((t) => `${esc(t.title)}（${shortDay(t.do_date || t.due_date)}）`).join('、')}</div>` : ''}</section>`,
+  week: (v) => `<section><h2 style="margin:0 0 10px;font-size:19px">Next 7 Days</h2><div class="week">${v.week.map((w) => `<div class="day${w.n ? ' busy' : ''}"><div class="d">${shortDay(w.date)}</div><div class="c">${w.n}</div></div>`).join('')}</div>
+        ${v.later.length ? `<div class="m" style="margin-top:8px">Later: ${v.later.slice(0, 3).map((t) => `${esc(t.title)} (${shortDay(t.do_date || t.due_date)})`).join(', ')}</div>` : ''}</section>`,
 };
 
 // ── 版面 ──
 // 節點：'積木名稱'、{ block: '積木名稱', ...選項 }、或容器 { cls, style, items: [節點…] }。
 const T = { // 常用的積木設定，各版面共用
-  todayRest:  { block: 'tasks', title: '今天要做', items: 'rest', row: 'check', empty: '沒有了' },
-  followRows: { block: 'tasks', title: '今天要追', items: 'follow_today', row: 'who', empty: '今天沒有要追的人' },
-  colToday:   { block: 'column', title: '今天', items: 'today_list', cls: 'today', empty: '今天的都做完了' },
-  colFollow:  { block: 'column', title: '今天要追', items: 'follow_today', empty: '今天沒有要追的人' },
-  colWaiting: { block: 'column', title: '等回覆', items: 'waiting', empty: '沒有在等的', opts: { showDate: true } },
-  colUndated: { block: 'column', title: '沒排日期', items: 'undated', empty: '沒有' },
-  leftToday:  { block: 'tasks', title: '今天還沒結的', items: 'today_list', row: 'both', empty: '今天的都結了', style: 'flex:1', countStyle: 'color:var(--warn)' },
-  tomorrow:   { block: 'tasks', title: (v) => `明天 · ${shortDay(v.tomorrow)}`, count: (items) => `${items.length} 件`, items: 'tomorrow_list', row: 'timed', empty: '明天沒有排定的事', style: 'padding:26px 30px', h2Style: 'font-size:26px', countStyle: 'font-size:16px' },
+  todayRest:  { block: 'tasks', title: 'To-Do', items: 'rest', row: 'check', empty: 'All clear' },
+  todayPlain: { block: 'tasks', title: 'To-Do', items: 'todayPlain', row: 'check', empty: 'All clear' },
+  followRows: { block: 'tasks', title: 'Follow-Ups', items: 'follow_today', row: 'who', empty: 'No follow-ups today' },
+  colToday:   { block: 'column', title: 'Today', items: 'today_list', cls: 'today', empty: 'All done for today' },
+  colFollow:  { block: 'column', title: 'Follow-Ups', items: 'follow_today', empty: 'No follow-ups today' },
+  colWaiting: { block: 'column', title: 'Waiting On', items: 'waiting', empty: 'Not waiting on anyone', opts: { showDate: true } },
+  colUndated: { block: 'column', title: 'No Date', items: 'undated', empty: 'None' },
+  leftToday:  { block: 'tasks', title: 'Still Open Today', items: 'today_list', row: 'both', empty: 'All wrapped up', style: 'flex:1', countStyle: 'color:var(--warn)' },
+  tomorrow:   { block: 'tasks', title: (v) => `Tomorrow · ${shortDay(v.tomorrow)}`, count: (items) => plural(items.length, 'item'), items: 'tomorrow_list', row: 'timed', empty: 'Nothing scheduled tomorrow', style: 'padding:26px 30px', h2Style: 'font-size:26px', countStyle: 'font-size:16px' },
 };
 const LAYOUTS = {
   compact: {
-    morning: { cls: 'stack', items: ['hero', { cls: 'grid3', style: 'flex:1', items: [T.todayRest, T.followRows, 'questions'] }] },
+    // Ben 2026-10-28: weather + schedule | FYI | To-Do + Follow-Ups (Questions moved to the header chip)
+    morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'timeline'] }, 'fyi', { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
     work: { cls: 'grid4', items: [T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
     evening: { cls: 'split', items: [{ cls: 'stack', style: 'gap:22px;min-height:0;height:auto', items: ['week', T.leftToday] }, T.tomorrow] },
   },
 };
 // 還沒設計的版面先沿用 compact（之後一種一種定）
+// ── Reminders (dash-d3 notices) + weather (Open-Meteo, fetched by this page; if it fails the block just hides) ──
+// Ben 2026-10-28: option A layout (schedule timeline + FYI list) with option B's weather (hourly rain chart).
+const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37&current=temperature_2m,precipitation,weather_code&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FChicago&forecast_days=2';
+let wx = null;
+async function loadWx() { try { const r = await fetch(WX_URL, { cache: 'no-store' }); if (!r.ok) throw 0; wx = await r.json(); render(); } catch {} }
+const WMO = (c) => c === 0 ? ['Clear', 'sun'] : c <= 2 ? ['Partly cloudy', 'part'] : c === 3 ? ['Cloudy', 'cloud'] : c <= 48 ? ['Foggy', 'cloud']
+  : c <= 57 ? ['Drizzle', 'rain'] : c <= 67 ? ['Rain', 'rain'] : c <= 77 ? ['Snow', 'cloud'] : c <= 82 ? ['Showers', 'rain'] : ['Thunderstorms', 'storm'];
+function wxIcon(kind, size = 52) {
+  const sun = '<circle cx="20" cy="20" r="9" fill="#F2B233"/>';
+  const cloud = '<path d="M16 42h26a9 9 0 0 0 0-18 13 13 0 0 0-25-3 10 10 0 0 0-1 21z" fill="#B7C2D0"/>';
+  const drops = '<path d="M20 46l-3 7M30 46l-3 7M40 46l-3 7" stroke="#2457D6" stroke-width="3" stroke-linecap="round"/>';
+  const bolt = '<path d="M30 44l-6 9h6l-4 8" stroke="#F2B233" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  const body = kind === 'sun' ? '<circle cx="28" cy="28" r="12" fill="#F2B233"/>' : kind === 'part' ? sun + cloud : kind === 'rain' ? cloud + drops : kind === 'storm' ? cloud + bolt : cloud;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 60 60" aria-hidden="true">${body}</svg>`;
+}
+// Chance of rain for the rest of today (now through 21:00)
+function rainAhead(w, today) {
+  const c = chi(); const out = [];
+  w.hourly.time.forEach((t, i) => { const h = +t.slice(11, 13); if (t.startsWith(today) && h >= c.h && h <= 21) out.push({ h, p: w.hourly.precipitation_probability[i] ?? 0 }); });
+  return out;
+}
+const hh = (h) => `${String(h).padStart(2, '0')}:00`;
+
+const hm = (s) => s ? (+s.slice(0, 2)) * 60 + (+s.slice(3, 5)) : null;
+const nowMin = () => { const c = chi(); return c.h * 60 + c.m; };
+function deriveNotices(d) {
+  const n = d.notices || {};
+  const now = nowMin();
+  const meets = (n.meetings || []).filter((m) => m.date === d.today).map((m) => ({ kind: 'meet', start: m.start, end: m.end, all_day: m.all_day,
+    title: m.subject, sub: [m.place, m.online].filter(Boolean).join(' · ') }));
+  const tasks = d.reminders.map((t) => ({ kind: 'task', start: t.time, end: null, title: t.title, sub: t.project ? t.project.split(' - ')[0] : '', page_id: t.page_id }));
+  const sched = [...meets, ...tasks].sort((a, b) => (b.all_day ? 1 : 0) - (a.all_day ? 1 : 0) || (a.start || '').localeCompare(b.start || ''));
+  for (const s of sched) {
+    const st = hm(s.start), en = hm(s.end);
+    s.state = s.all_day ? 'live' : s.kind === 'meet' ? (en !== null && en <= now ? 'past' : st <= now ? 'live' : 'next') : (st < now ? 'late' : 'next');
+  }
+  const timed = new Set(d.reminders.map((t) => t.page_id));
+  return { sched, tmrMeet: (n.meetings || []).filter((m) => m.date === d.tomorrow), fyi: n.fyi || [],
+    todayPlain: d.today_list.filter((t) => !timed.has(t.page_id)) };
+}
+const FYG = { today: 'Today', new: 'New', upcoming: 'Coming Up' };
+const fyBadge = (f) => f.group === 'today' ? '<span class="badge today">Today</span>' : f.group === 'new' ? '<span class="badge new">New</span>'
+  : `<span class="badge">${f.due_date ? shortDay(f.due_date) : 'Later'}</span>`;
+const schedTime = (s) => s.all_day ? 'All day' : s.start;
+
+Object.assign(BLOCKS, {
+  // Weather: now, high/low, umbrella hint, and an hourly chance-of-rain chart for the rest of today
+  weather: (v) => {
+    if (!wx?.current) return '';
+    const [lbl, kind] = WMO(wx.current.weather_code);
+    const hi = Math.round(wx.daily.temperature_2m_max[0]), lo = Math.round(wx.daily.temperature_2m_min[0]);
+    const ahead = rainAhead(wx, v.today); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
+    const umbIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9zM12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+    const rainNote = peak.p >= 40 ? `<div class="umbpill">${umbIcon}Grab an umbrella · ${peak.p}% around ${hh(peak.h)}</div>`
+      : `<div class="norain">${peak.p >= 20 ? `Up to ${peak.p}% chance of rain` : 'No rain expected'}</div>`;
+    // Bars for each hour left today; the wettest hour is darker and labeled
+    const bars = ahead.map((a) => `<div class="b${a === peak && a.p >= 20 ? ' hi' : ''}" title="${hh(a.h)} ${a.p}%">${a === peak && a.p >= 20 ? `<span>${a.p}%</span>` : ''}<i style="height:${Math.max(6, a.p * 0.78)}%"></i></div>`).join('');
+    return `<section class="wx2">
+      <div class="wx-top">${wxIcon(kind, 54)}<div class="tmp">${Math.round(wx.current.temperature_2m)}°</div>
+        <div style="min-width:0;margin-left:4px"><div class="lbl">${lbl}</div><div class="hl">H ${hi}° · L ${lo}°</div></div></div>
+      ${rainNote}
+      ${ahead.length > 1 ? `<div class="chart"><div class="bars">${bars}</div><div class="rainx"><span>${hh(ahead[0].h)}</span><span>Chance of rain</span><span>${hh(ahead[ahead.length - 1].h)}</span></div></div>` : ''}</section>`;
+  },
+  // Header stats: Overdue · To-Do Today · Meetings (next one) · Done Today
+  stats: (v) => {
+    const overdue = v.today_list.filter((t) => t.late_days > 0 || (t.due_in !== null && t.due_in < 0)).length;
+    const meets = v.sched.filter((s) => s.kind === 'meet');
+    const nextMeet = meets.find((s) => s.state === 'next' || s.state === 'live');
+    const done = v.counts.done_today;
+    const tile = (val, label, cls = '', sub = '') => `<div class="stat ${cls}${val === 0 && !cls.includes('bad') ? ' zero' : ''}"><div class="v">${val}</div><div class="l">${label}</div><div class="s">${sub}</div></div>`;
+    return tile(overdue, 'Overdue', overdue ? 'bad' : '')
+      + tile(v.counts.today, 'To-Do Today')
+      + tile(meets.length, meets.length === 1 ? 'Meeting' : 'Meetings', '', nextMeet ? (nextMeet.state === 'live' ? `In progress till ${nextMeet.end}` : `Next at ${nextMeet.start}`) : (meets.length ? 'All done' : ''))
+      + (done === undefined ? '' : tile(done, 'Done Today', done ? 'good' : ''));
+  },
+  // Today's schedule: meetings + timed Task Hub reminders by time; red "Now" line; finished meetings fade
+  timeline: (v) => {
+    const rows = []; let lined = false; const c = chi();
+    const nowLine = `<div class="nowline">Now ${String(c.h).padStart(2, '0')}:${String(c.m).padStart(2, '0')}</div>`;
+    for (const s of v.sched) {
+      if (!lined && s.state !== 'past' && !s.all_day) { rows.push(nowLine); lined = true; }
+      const live = s.state === 'live' && !s.all_day ? '<span class="livetag">In progress</span>' : '';
+      const late = s.state === 'late' ? '<div class="m late">Time passed, not done yet</div>' : '';
+      rows.push(`<div class="tl ${s.kind} s-${s.state}"><div class="tl-time">${schedTime(s)}${s.end ? `<span class="e">${s.end}</span>` : ''}</div><div class="tl-bar"></div>
+        <div style="min-width:0;flex:1"><div class="t">${esc(s.title)}${live}</div>${s.sub ? `<div class="m">${esc(s.sub)}</div>` : ''}${late}</div>
+        ${s.page_id ? `<button class="check sm" type="button" aria-label="Mark done" data-act="done" data-id="${s.page_id}"></button>` : ''}</div>`);
+    }
+    if (!lined) rows.push(nowLine);
+    const tmr = v.tmrMeet.length ? `<div class="tmr">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}${v.tmrMeet.length > 2 ? ` +${v.tmrMeet.length - 2} more` : ''}</div>` : '';
+    return `<section class="card"><h2>Schedule <span class="n">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings or timed reminders today</div>'}</div>${tmr}</section>`;
+  },
+  // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
+  fyi: (v, o) => {
+    const max = o.max ?? 99; let shown = 0; const parts = [];
+    for (const g of ['today', 'new', 'upcoming']) {
+      const items = v.fyi.filter((f) => f.group === g).slice(0, Math.max(0, max - shown));
+      if (!items.length) continue; shown += items.length;
+      parts.push(`<div class="fy-g">${FYG[g]}</div>` + items.map((f) => `<div class="fy">${fyBadge(f)}<div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join(''));
+    }
+    const rest = v.fyi.length - shown;
+    return `<section class="card"><h2>FYI <span class="n">${v.fyi.length}</span></h2><div class="list">${parts.join('') || '<div class="empty">Nothing new</div>'}${rest > 0 ? `<div class="m" style="padding-top:8px">+${rest} more</div>` : ''}</div></section>`;
+  },
+});
 for (const k of ['desk', 'tall', 'narrow', 'tv']) LAYOUTS[k] ??= LAYOUTS.compact;
 
 function build(node, v) {
@@ -271,25 +447,28 @@ function render() {
   document.body.dataset.layout = lay;
   document.querySelectorAll('.tab[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
   if (!data) return;
-  $('main').innerHTML = build(LAYOUTS[lay][m], derive(data));
+  const v = derive(data);
+  $('stats').innerHTML = BLOCKS.stats(v);
+  $('main').innerHTML = build(LAYOUTS[lay][m], v);
 }
 let resizeT;
 addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(render, 200); });
 function tick() {
   const c = chi();
   $('clock').textContent = `${String(c.h).padStart(2,'0')}:${String(c.m).padStart(2,'0')}`;
-  $('date').textContent = `星期${WD[c.wd]} · ${c.mon} 月 ${c.day} 日`;
+  $('date').textContent = `${WDL[c.wd]}, ${MON[c.mon - 1]} ${c.day}`;
   const st = $('status');
+  if (data) { const q = data.questions.total; $('qchip').innerHTML = q ? `Questions <b>${q}</b>` : 'No questions'; $('qchip').style.color = q ? '' : 'var(--sub)'; }
   if (data) {
     const syncMin = data.synced_at ? Math.round((Date.now() - Date.parse(data.synced_at)) / 60000) : null;
     const stale = failing || Date.now() - lastOk > 5 * 60000;
     const h = data.health;
     const lv = stale ? 'bad' : h ? h.level : 'ok';
     st.className = 'hchip lv-' + lv;
-    $('statusText').textContent = stale ? '連不上 NW2，顯示的是舊資料'
-      : !h ? `Notion 同步於 ${syncMin} 分鐘前`
-      : h.level === 'ok' ? `系統正常 · Notion ${syncMin} 分鐘前`
-      : h.bad ? `${h.bad} 項異常${h.warn ? `、${h.warn} 項要注意` : ''}` : `${h.warn} 項要注意`;
+    $('statusText').textContent = stale ? "Can't reach NW2 · showing older data"
+      : !h ? `Notion synced ${syncMin}m ago`
+      : h.level === 'ok' ? `All systems normal · synced ${syncMin}m ago`
+      : h.bad ? `${plural(h.bad, 'issue')}${h.warn ? `, ${plural(h.warn, 'warning')}` : ''}` : plural(h.warn, 'warning');
   }
 }
 let lastMode = null;
@@ -299,7 +478,7 @@ async function load() {
   if (!key) return showLogin();
   try {
     const r = await fetch(API, { headers: { 'x-nw2-dash': key }, cache: 'no-store' });
-    if (r.status === 401) { key = null; return showLogin('金鑰不對，請重新輸入'); }
+    if (r.status === 401) { key = null; return showLogin('That key didn\'t work. Please try again.'); }
     if (!r.ok) throw new Error(r.status);
     data = await r.json(); lastOk = Date.now(); failing = false; render();
     if ($('healthPanel').style.display === 'flex') openHealth();
@@ -309,11 +488,20 @@ async function load() {
 async function act(action, id) {
   try {
     const r = await fetch(API, { method: 'POST', headers: { 'x-nw2-dash': key, 'content-type': 'application/json' }, body: JSON.stringify({ action, page_id: id }) });
-    toast(r.ok ? (action === 'done' ? '已打勾 Done' : action === 'tomorrow' ? '已改到明天' : '已請 Notion 重新同步') : '沒成功，稍後再試');
-  } catch { toast('連不上 NW2'); }
+    toast(r.ok ? (action === 'done' ? 'Marked done' : action === 'tomorrow' ? 'Moved to tomorrow' : 'Asked Notion to resync') : "Didn't go through. Try again in a bit.");
+  } catch { toast("Can't reach NW2"); }
   load();
 }
-function openHealth() { if (!data) return; $('healthBody').innerHTML = BLOCKS.health(derive(data)); $('healthPanel').style.display = 'flex'; }
+let panelKind = 'health';
+function openHealth(kind = panelKind) {
+  if (!data) return; panelKind = kind;
+  const v = derive(data);
+  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : 'System Health';
+  $('healthBody').innerHTML = kind === 'questions'
+    ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
+    : BLOCKS.health(v);
+  $('healthPanel').style.display = 'flex';
+}
 $('healthPanel').addEventListener('click', (e) => { if (e.target.id === 'healthPanel') $('healthPanel').style.display = 'none'; });
 function toast(s) { const t = $('toast'); t.textContent = s; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', 2500); }
 function showLogin(msg) { $('login').style.display = 'flex'; if (msg) toast(msg); $('key').focus(); }
@@ -322,7 +510,8 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.mode) { mode = b.dataset.mode; store.set('nw2.mode', mode); render(); return; }
   if (b.id === 'fs') { toggleFs(); return; }
-  if (b.id === 'status') { openHealth(); return; }
+  if (b.id === 'status') { openHealth('health'); return; }
+  if (b.id === 'qchip') { openHealth('questions'); return; }
   if (b.id === 'healthClose') { $('healthPanel').style.display = 'none'; return; }
   if (b.id === 'refresh') { act('refresh'); setTimeout(load, 8000); return; }
   if (b.dataset.act && b.dataset.id) { b.disabled = true; act(b.dataset.act, b.dataset.id); }
@@ -336,7 +525,7 @@ const fsDoc = (() => { try { return window.top.document; } catch { return docume
 const inShell = fsDoc !== document;
 const fsOn = () => !!fsDoc.fullscreenElement;
 async function toggleFs() { try { if (fsOn()) await fsDoc.exitFullscreen(); else await fsDoc.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch {} }
-const fsLabel = () => { $('fs').textContent = fsOn() ? '離開全螢幕' : '全螢幕'; };
+const fsLabel = () => { $('fs').textContent = fsOn() ? 'Exit full screen' : 'Full screen'; };
 fsDoc.addEventListener('fullscreenchange', fsLabel);
 addEventListener('pagehide', () => fsDoc.removeEventListener('fullscreenchange', fsLabel));
 // In the shell: F5 / Ctrl+R reload only this board (full screen stays); Ctrl+Shift+R reloads the whole shell (full screen drops, tap once).
@@ -352,6 +541,7 @@ document.addEventListener('pointerdown', (e) => { if (!firstTap) return; firstTa
 // by itself. Any first key except Escape counts; never while the key-entry box is showing.
 document.addEventListener('keydown', (e) => { if (!firstTap || e.key === 'Escape' || $('login').style.display === 'flex') return; firstTap = false; if (!fsOn()) toggleFs(); }, { capture: true });
 wake(); tick(); render(); load(); fsLabel(); setInterval(load, POLL_MS);
+loadWx(); setInterval(loadWx, 30 * 60e3);
 // Once a day (04:00) reload to pick up a new version of this page, but only when there is one
 // (compares the HTML on the server with the copy fetched at start-up; inside the shell only this board reloads).
 let selfHtml = null;

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>NW2 看板</title>
+<title>Daily Board</title>
 <style>html,body{margin:0;height:100%;background:#EEF1F4;overflow:hidden}iframe{display:block;border:0;width:100%;height:100%}</style>
 </head>
 <body>
@@ -13,7 +13,7 @@
      所以 board.html 重新載入（每天 04:00 有新版時、Ctrl+R、F5）都不會動到 Chrome 的全螢幕狀態；
      Ctrl+Shift+R 才會重載整個外殼（之後點一下畫面回到全螢幕）。網址上的 ?view=… 等參數原樣傳給 board.html。
      改這一頁要同時更新主 repo dashboard/index.html 與 nw2-dashboard repo。-->
-<iframe id="board" title="NW2 看板" allow="fullscreen; screen-wake-lock" allowfullscreen></iframe>
+<iframe id="board" title="Daily Board" allow="fullscreen; screen-wake-lock" allowfullscreen></iframe>
 <script>
 const board = document.getElementById('board');
 const reloadBoard = () => { const q = new URLSearchParams(location.search); q.set('v', Date.now()); board.src = 'board.html?' + q.toString(); };
