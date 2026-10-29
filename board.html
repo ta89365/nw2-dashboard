@@ -30,18 +30,22 @@ main{flex:1;min-height:0}
 .card h2{margin:0 0 8px;font-size:21px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
 .card h2 .n{font-family:'Space Grotesk',sans-serif;color:var(--sub);font-weight:600}
 .card.dark h2 .n{color:var(--darksub)}
-.list{overflow-y:auto;min-height:0;flex:1;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.list{overflow-y:auto;overflow-x:hidden;min-height:0;flex:1;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .row{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
 .card.dark .row{border-color:rgba(255,255,255,.12)}
-.check{flex:none;width:44px;height:44px;border-radius:12px;border:2px solid #9AA3B0;background:transparent}
-.check:active{background:var(--accent)}
+.check{flex:none;width:48px;height:48px;border-radius:12px;border:2px solid #9AA3B0;background:transparent;position:relative;padding:0;transition:background-color .18s,border-color .18s,transform .12s}
+.check svg{position:absolute;inset:0;width:100%;height:100%;padding:10px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.check svg path{stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .28s ease .05s}
+.check.on{background:var(--accent);border-color:var(--accent)}
+.check.on svg path{stroke-dashoffset:0}
+.check:active{transform:scale(.92)}
 .who{flex:none;width:44px;height:44px;border-radius:22px;background:#E4ECFB;color:#2457D6;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
 body.night .who{background:#24364F;color:#C3D4FF}
 .t{font-size:17px;font-weight:500;line-height:1.38}
 .m{font-size:13.5px;color:var(--sub);margin-top:3px}
 .card.dark .m{color:var(--darksub)}
 .m.late{color:var(--warn)}
-.btn{flex:none;height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:15px}
+.btn{flex:none;height:48px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:15px}
 .btn.primary{background:var(--accent);border:none;color:var(--bg);font-weight:700}
 .empty{color:var(--sub);font-size:16px;padding:12px 0}
 /* morning */
@@ -158,7 +162,8 @@ button.stat .l{text-decoration:underline dotted;text-underline-offset:3px}
 .nowline{display:flex;align-items:center;gap:8px;color:var(--bad);font-size:13px;font-weight:700;padding:4px 0}
 .nowline::after{content:'';flex:1;height:2px;background:var(--bad);border-radius:1px}
 .tmr{font-size:13.5px;color:var(--sub);padding-top:10px;border-top:1px dashed var(--line)}
-.check.sm{width:36px;height:36px;border-radius:10px}
+.check.sm{width:40px;height:40px;border-radius:10px}
+.check.sm svg{padding:8px}
 /* FYI */
 .fy-g{font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.06em;padding:12px 0 6px}
 .fy-g:first-child{padding-top:0}
@@ -171,6 +176,34 @@ body.night .badge.new{background:#1C3A2A}
 .fy .t{font-size:16px}
 .c1{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .c2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* ── Motion (Ben 2026-10-28: subtle and functional; CSS transforms/opacity only — the Surface Pro 5 is a 2017 machine) ── */
+main{transition:opacity .22s ease}
+body,.card,.col,.wx2,.tab,.hchip,.k{transition:background-color .4s ease,color .4s ease,border-color .4s ease}
+.row,.k,.tl,.fy{transition:transform .32s ease,opacity .32s ease}
+.leave-r{transform:translateX(64px);opacity:0}
+.leave-l{transform:translateX(-64px);opacity:0}
+.fresh{animation:freshIn 2.4s ease-out}
+@keyframes freshIn{0%{opacity:0;transform:translateY(6px);background:color-mix(in srgb,var(--accent) 18%,transparent)}18%{opacity:1;transform:none}60%{background:color-mix(in srgb,var(--accent) 18%,transparent)}100%{background:transparent}}
+.soon{animation:breathe 30s ease-in-out infinite;transform-origin:left center}
+@keyframes breathe{0%,6%{transform:scale(1)}3%{transform:scale(1.02)}}
+.hchip.lv-bad .dot{animation:blink 2.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.wxi .drops{animation:drip 20s linear infinite}
+@keyframes drip{0%{transform:translateY(-6px);opacity:0}2%{opacity:1}6%{transform:translateY(10px);opacity:0}100%{transform:translateY(10px);opacity:0}}
+.wxi .bolt{animation:flash 20s linear infinite}
+@keyframes flash{0%,1%,3%,100%{opacity:1}2%{opacity:.1}}
+.allclear{display:flex;align-items:center;gap:10px;color:var(--good);font-weight:600;font-size:16px;padding:12px 0}
+.allclear svg{width:28px;height:28px;stroke:var(--good);stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.allclear.draw circle{stroke-dasharray:70;stroke-dashoffset:70;animation:drawc .5s ease forwards}
+.allclear.draw path{stroke-dasharray:24;stroke-dashoffset:24;animation:drawc .35s ease .4s forwards}
+@keyframes drawc{to{stroke-dashoffset:0}}
+.skel{display:grid;grid-template-columns:4fr 5fr 4fr;gap:18px;height:100%}
+.skel div{background:var(--card);border-radius:20px;animation:shimmer 1.4s ease-in-out infinite}
+@keyframes shimmer{0%,100%{opacity:.45}50%{opacity:.8}}
+body.nocursor,body.nocursor *{cursor:none!important}
+#toast button{margin-left:14px;background:none;border:none;color:#8FB0FF;font:inherit;font-weight:700;cursor:pointer;padding:0;height:auto}
+body.night #toast button{color:#2457D6}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -206,7 +239,7 @@ const POLL_MS = 60_000;
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
 let key = store.get('nw2.key');
 let mode = store.get('nw2.mode') || 'auto';
-let data = null, lastOk = 0, failing = false;
+let data = null, lastOk = 0, failing = false, seenKeys = null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -250,32 +283,45 @@ function meta(t, opts = {}, inline = false) {
   const pill = od ? `<span class="odpill">Overdue · ${plural(od, 'day')}</span>` : '';
   return `<${tag} class="m${late ? ' late' : ''}">${pill}${bits.join(' · ')}</${tag}>`;
 }
+// Check button with a tick that draws itself when tapped (.on)
+const checkBtn = (id, cls = '') => `<button class="check${cls ? ' ' + cls : ''}" type="button" aria-label="Mark done" data-act="done" data-id="${id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>`;
+// Item keys for the "new since last fetch" highlight
+const tKey = (t) => `t:${t.page_id}`, fKey = (f) => `f:${f.title}|${f.due_date || ''}`, mKey = (s) => `m:${s.start || 'all'}|${s.title}`;
+let freshKeys = new Set();
+const fr = (k) => (freshKeys.has(k) ? ' fresh' : '');
 const initial = (title) => { const m = /^(?:Waiting on|Follow up)\s+([^\s:,&]+)/i.exec(title) || /^([^\s:]+):/.exec(title); return m ? esc([...m[1]].slice(0, 2).join('')) : '…'; };
 const cleanTitle = (title) => esc(title.replace(/^Waiting on\s+/i, ''));
-const list = (items, fn, empty, opts) => items.length ? items.map((t) => fn(t, opts)).join('') : `<div class="empty">${empty}</div>`;
+const allClear = new Set();
+const list = (items, fn, empty, opts) => items.length ? items.map((t) => fn(t, opts)).join('') : (empty.startsWith('<div') ? empty : `<div class="empty">${empty}</div>`);
 
 // ── 任務列的幾種樣式（積木裡用 row: '<名稱>' 指定）──
 const ROWS = {
   // 左邊打勾
-  check: (t, opts) => `<div class="row"><button class="check" type="button" aria-label="Mark done" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div></div>`,
+  check: (t, opts) => `<div class="row${fr(tKey(t))}" data-key="${tKey(t)}">${checkBtn(t.page_id)}<div style="min-width:0"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div></div>`,
   // 左邊人名縮寫、右邊「明天」（要追的人）
-  who: (t, opts) => `<div class="row"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
+  who: (t, opts) => `<div class="row${fr(tKey(t))}" data-key="${tKey(t)}"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
   // 右邊「改明天」＋「完成」
-  both: (t) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">Done</button></div>`,
+  both: (t) => `<div class="row${fr(tKey(t))}" data-key="${tKey(t)}"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">Done</button></div>`,
   // 左邊打勾（Done）、右邊「Tomorrow」— for narrow columns (evening wrap-up)
-  checkTmr: (t, opts) => `<div class="row"><button class="check" type="button" aria-label="Mark done" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0;flex:1"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
+  checkTmr: (t, opts) => `<div class="row${fr(tKey(t))}" data-key="${tKey(t)}">${checkBtn(t.page_id)}<div style="min-width:0;flex:1"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
   // 左邊時間（明天的行程）
-  timed: (t) => `<div class="row"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || 'All day'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`,
+  timed: (t) => `<div class="row${fr(tKey(t))}" data-key="${tKey(t)}"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || 'All day'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`,
   // 看板式小卡（上班模式的欄）
   kcard: (t, opts) => {
     const tags = t.project ? `<span class="tag">${esc(t.project.split(' - ')[0])}</span>` : '';
     const m = meta({ ...t, project: null }, opts, true);
-    return `<div class="k"><button class="check" style="width:36px;height:36px" type="button" aria-label="Mark done" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0"><div class="t" style="font-size:15.5px">${esc(t.title)}</div><div style="margin-top:6px">${tags}${m}</div></div></div>`;
+    return `<div class="k${fr(tKey(t))}" data-key="${tKey(t)}">${checkBtn(t.page_id, 'sm')}<div style="min-width:0"><div class="t" style="font-size:15.5px">${esc(t.title)}</div><div style="margin-top:6px">${tags}${m}</div></div></div>`;
   },
 };
 
 // ── 資料整理：從 API 的 data 算出積木要用的清單 ──
-function derive(d) {
+function derive(d0) {
+  // Items with a pending (undoable) action disappear right away; Done Today counts them already.
+  const live = (arr) => (arr || []).filter((t) => !pending.has(t.page_id));
+  const d = { ...d0 };
+  for (const k of ['reminders', 'today_list', 'follow_today', 'waiting', 'undated', 'tomorrow_list', 'later']) d[k] = live(d0[k]);
+  const dones = [...pending.values()].filter((p) => p.action === 'done').length;
+  d.counts = { ...d0.counts, today: d.today_list.length, done_today: d0.counts.done_today === undefined ? undefined : d0.counts.done_today + dones };
   const hero = d.reminders[0] || d.today_list[0] || null;
   const rest = d.today_list.filter((t) => t !== hero && t.page_id !== hero?.page_id);
   const overdue = [...d.today_list, ...d.follow_today].filter((t) => odDays(t) > 0).sort((a, b) => odDays(b) - odDays(a));
@@ -296,6 +342,10 @@ const BLOCKS = {
   // 白色卡片＋任務列表。o: title（文字或函式）, items, row, empty, cls, style, count, countStyle, h2Style, opts
   tasks: (v, o) => {
     const items = v[o.items];
+    if (!items.length && o.row === 'check') { // Ben 2026-10-28: a small drawn tick when a list is clear, once per clearing
+      const k = `ac:${o.items}`; const first = !allClear.has(k); allClear.add(k);
+      o = { ...o, empty: `<div class="allclear${first ? ' draw' : ''}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3L17 9"/></svg>${o.empty}</div>` };
+    } else allClear.delete(`ac:${o.items}`);
     return `<section class="card${o.cls ? ' ' + o.cls : ''}"${o.style ? ` style="${o.style}"` : ''}><h2${o.h2Style ? ` style="${o.h2Style}"` : ''}>${typeof o.title === 'function' ? o.title(v) : o.title} <span class="n"${o.countStyle ? ` style="${o.countStyle}"` : ''}>${o.count ? o.count(items, v) : items.length}</span></h2><div class="list">${list(items, ROWS[o.row], o.empty, o.opts)}</div></section>`;
   },
   // 看板式欄（上班模式）。o: title, items, cls, empty, opts
@@ -356,10 +406,10 @@ const WMO = (c) => c === 0 ? ['Clear', 'sun'] : c <= 2 ? ['Partly cloudy', 'part
 function wxIcon(kind, size = 52) {
   const sun = '<circle cx="20" cy="20" r="9" fill="#F2B233"/>';
   const cloud = '<path d="M16 42h26a9 9 0 0 0 0-18 13 13 0 0 0-25-3 10 10 0 0 0-1 21z" fill="#B7C2D0"/>';
-  const drops = '<path d="M20 46l-3 7M30 46l-3 7M40 46l-3 7" stroke="#2457D6" stroke-width="3" stroke-linecap="round"/>';
-  const bolt = '<path d="M30 44l-6 9h6l-4 8" stroke="#F2B233" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  const drops = '<path class="drops" d="M20 46l-3 7M30 46l-3 7M40 46l-3 7" stroke="#2457D6" stroke-width="3" stroke-linecap="round"/>';
+  const bolt = '<path class="bolt" d="M30 44l-6 9h6l-4 8" stroke="#F2B233" stroke-width="3" fill="none" stroke-linecap="round"/>';
   const body = kind === 'sun' ? '<circle cx="28" cy="28" r="12" fill="#F2B233"/>' : kind === 'part' ? sun + cloud : kind === 'rain' ? cloud + drops : kind === 'storm' ? cloud + bolt : cloud;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 60 60" aria-hidden="true">${body}</svg>`;
+  return `<svg class="wxi" width="${size}" height="${size}" viewBox="0 0 60 60" aria-hidden="true">${body}</svg>`;
 }
 // Hourly chance of rain for one day, from hour `from` through 21:00 (today: from now; tomorrow: from 07:00)
 function rainAhead(w, date, from = chi().h) {
@@ -381,6 +431,7 @@ function deriveNotices(d) {
   for (const s of sched) {
     const st = hm(s.start), en = hm(s.end);
     s.state = s.all_day ? 'live' : s.kind === 'meet' ? (en !== null && en <= now ? 'past' : st <= now ? 'live' : 'next') : (st < now ? 'late' : 'next');
+    s.soon = !s.all_day && s.state === 'next' && st - now <= 10 && st - now > 0; // starts within 10 minutes → breathes
   }
   const timed = new Set(d.reminders.map((t) => t.page_id));
   const tmrMeet = (n.meetings || []).filter((m) => m.date === d.tomorrow);
@@ -442,9 +493,9 @@ Object.assign(BLOCKS, {
       if (!lined && s.state !== 'past' && !s.all_day) { rows.push(nowLine); lined = true; }
       const live = s.state === 'live' && !s.all_day ? '<span class="livetag">In progress</span>' : '';
       const late = s.state === 'late' ? '<div class="m late">Time passed, not done yet</div>' : '';
-      rows.push(`<div class="tl ${s.kind} s-${s.state}"><div class="tl-time">${schedTime(s)}${s.end ? `<span class="e">${s.end}</span>` : ''}</div><div class="tl-bar"></div>
+      rows.push(`<div class="tl ${s.kind} s-${s.state}${s.soon ? ' soon' : ''}${fr(s.page_id ? `t:${s.page_id}` : mKey(s))}" data-key="${s.page_id ? `t:${s.page_id}` : mKey(s)}"><div class="tl-time">${schedTime(s)}${s.end ? `<span class="e">${s.end}</span>` : ''}</div><div class="tl-bar"></div>
         <div style="min-width:0;flex:1"><div class="t">${esc(s.title)}${live}</div>${s.sub ? `<div class="m">${esc(s.sub)}</div>` : ''}${late}</div>
-        ${s.page_id ? `<button class="check sm" type="button" aria-label="Mark done" data-act="done" data-id="${s.page_id}"></button>` : ''}</div>`);
+        ${s.page_id ? checkBtn(s.page_id, 'sm') : ''}</div>`);
     }
     if (!lined) rows.push(nowLine);
     const tmr = v.tmrMeet.length ? `<div class="tmr">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}${v.tmrMeet.length > 2 ? ` +${v.tmrMeet.length - 2} more` : ''}</div>` : '';
@@ -458,7 +509,7 @@ Object.assign(BLOCKS, {
       if (!lined && s.state !== 'past' && !s.all_day) { rows.push(nowLine); lined = true; }
       const live = s.state === 'live' && !s.all_day ? '<span class="livetag">In progress</span>' : '';
       const late = s.state === 'late' ? '<div class="m late">Time passed</div>' : '';
-      rows.push(`<div class="tl ${s.kind} s-${s.state}"><div class="tl-time">${schedTime(s)}${s.end ? `<span class="e">${s.end}</span>` : ''}</div><div class="tl-bar"></div>
+      rows.push(`<div class="tl ${s.kind} s-${s.state}${s.soon ? ' soon' : ''}${fr(s.page_id ? `t:${s.page_id}` : mKey(s))}" data-key="${s.page_id ? `t:${s.page_id}` : mKey(s)}"><div class="tl-time">${schedTime(s)}${s.end ? `<span class="e">${s.end}</span>` : ''}</div><div class="tl-bar"></div>
         <div style="min-width:0;flex:1"><div class="t">${esc(s.title)}${live}</div>${s.sub ? `<div class="m">${esc(s.sub)}</div>` : ''}${late}</div></div>`);
     }
     if (!lined) rows.push(nowLine);
@@ -491,7 +542,7 @@ Object.assign(BLOCKS, {
     for (const g of ['today', 'new', 'upcoming']) {
       const items = v.fyi.filter((f) => f.group === g).slice(0, Math.max(0, max - shown));
       if (!items.length) continue; shown += items.length;
-      parts.push(`<div class="fy-g">${FYG[g]}</div>` + items.map((f) => `<div class="fy">${fyBadge(f)}<div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join(''));
+      parts.push(`<div class="fy-g">${FYG[g]}</div>` + items.map((f) => `<div class="fy${fr(fKey(f))}" data-key="${fKey(f)}">${fyBadge(f)}<div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join(''));
     }
     const rest = v.fyi.length - shown;
     return `<section class="card"><h2>FYI <span class="n">${v.fyi.length}</span></h2><div class="list">${parts.join('') || '<div class="empty">Nothing new</div>'}${rest > 0 ? `<div class="m" style="padding-top:8px">+${rest} more</div>` : ''}</div></section>`;
@@ -516,16 +567,32 @@ function detectLayout() {
   return 'compact';
 }
 
+let paintedMode = null;
+const prevStat = new Map();
+// Stat numbers tick from the old value to the new one (about 0.4 s)
+function tickNumbers() {
+  document.querySelectorAll('.stat').forEach((el) => {
+    const v = el.querySelector('.v'), label = el.querySelector('.l')?.textContent, to = +v.textContent;
+    const from = prevStat.has(label) ? prevStat.get(label) : to; prevStat.set(label, to);
+    if (from === to || isNaN(to)) return;
+    const t0 = performance.now();
+    const step = (t) => { const k = Math.min(1, (t - t0) / 420); v.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+}
 function render() {
   const m = curMode();
   const lay = detectLayout();
   document.body.classList.toggle('night', m === 'evening');
   document.body.dataset.layout = lay;
   document.querySelectorAll('.tab[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
-  if (!data) return;
+  const main = $('main');
+  if (!data) { if (!main.innerHTML) main.innerHTML = '<div class="skel"><div></div><div></div><div></div></div>'; return; }
   const v = derive(data);
-  $('stats').innerHTML = BLOCKS.stats(v);
-  $('main').innerHTML = build(LAYOUTS[lay][m], v);
+  const paint = () => { $('stats').innerHTML = BLOCKS.stats(v); main.innerHTML = build(LAYOUTS[lay][m], v); tickNumbers(); };
+  if (paintedMode !== null && paintedMode !== m) { main.style.opacity = 0; setTimeout(() => { paint(); main.style.opacity = 1; }, 220); }
+  else paint();
+  paintedMode = m;
 }
 let resizeT;
 addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(render, 200); });
@@ -556,17 +623,46 @@ async function load() {
     const r = await fetch(API, { headers: { 'x-nw2-dash': key }, cache: 'no-store' });
     if (r.status === 401) { key = null; return showLogin('That key didn\'t work. Please try again.'); }
     if (!r.ok) throw new Error(r.status);
-    data = await r.json(); lastOk = Date.now(); failing = false; render();
+    const fresh = await r.json();
+    const keys = new Set();
+    for (const k of ['today_list', 'follow_today', 'waiting', 'undated', 'tomorrow_list', 'later']) (fresh[k] || []).forEach((t) => keys.add(tKey(t)));
+    (fresh.notices?.fyi || []).forEach((f) => keys.add(fKey(f)));
+    (fresh.notices?.meetings || []).forEach((mm) => keys.add(mKey({ start: mm.start, title: mm.subject })));
+    if (seenKeys) { freshKeys = new Set([...keys].filter((k) => !seenKeys.has(k))); clearTimeout(load.ft); load.ft = setTimeout(() => { freshKeys = new Set(); }, 15_000); }
+    seenKeys = keys;
+    data = fresh; lastOk = Date.now(); failing = false; render();
     if ($('healthPanel').style.display === 'flex') openHealth();
   } catch (e) { failing = true; }
   tick();
 }
-async function act(action, id) {
+async function act(action, id, opts = {}) {
   try {
-    const r = await fetch(API, { method: 'POST', headers: { 'x-nw2-dash': key, 'content-type': 'application/json' }, body: JSON.stringify({ action, page_id: id }) });
-    toast(r.ok ? (action === 'done' ? 'Marked done' : action === 'tomorrow' ? 'Moved to tomorrow' : 'Asked Notion to resync') : "Didn't go through. Try again in a bit.");
+    const r = await fetch(API, { method: 'POST', headers: { 'x-nw2-dash': key, 'content-type': 'application/json' }, body: JSON.stringify({ action, page_id: id }), keepalive: !!opts.keepalive });
+    if (!r.ok) toast("Didn't go through. Try again in a bit.");
+    else if (action === 'refresh') toast('Asked Notion to resync');
   } catch { toast("Can't reach NW2"); }
-  load();
+  if (!opts.keepalive) load();
+}
+// Done / Tomorrow are undoable for 5 s: the item leaves the screen at once, the write goes out when the undo window closes.
+const UNDO_MS = 5000;
+const pending = new Map(); // page_id → { action, timer }
+function queueAct(action, id) {
+  if (pending.has(id)) return;
+  pending.set(id, { action, timer: setTimeout(() => commitAct(id), UNDO_MS) });
+  render(); if ($('healthPanel').style.display === 'flex') openHealth();
+  toast(`${action === 'done' ? 'Marked done' : 'Moved to tomorrow'}<button type="button" data-undo="${id}">Undo</button>`, UNDO_MS);
+}
+function commitAct(id) { const p = pending.get(id); if (!p) return; pending.delete(id); act(p.action, id); }
+function undoAct(id) { const p = pending.get(id); if (!p) return; clearTimeout(p.timer); pending.delete(id); render(); if ($('healthPanel').style.display === 'flex') openHealth(); toast('Undone'); }
+addEventListener('pagehide', () => { for (const [id, p] of pending) { clearTimeout(p.timer); act(p.action, id, { keepalive: true }); } pending.clear(); });
+// A tapped row slides out (right = done, left = tomorrow), then the action is queued.
+function leaveRow(b, action, id) {
+  const row = b.closest('.row,.k,.tl');
+  if (action === 'done') b.classList.add('on');
+  if (!row) return queueAct(action, id);
+  row.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+  setTimeout(() => row.classList.add(action === 'done' ? 'leave-r' : 'leave-l'), action === 'done' ? 180 : 0);
+  setTimeout(() => queueAct(action, id), action === 'done' ? 520 : 340);
 }
 let panelKind = 'health';
 function openHealth(kind = panelKind) {
@@ -582,7 +678,7 @@ function openHealth(kind = panelKind) {
   $('healthPanel').style.display = 'flex';
 }
 $('healthPanel').addEventListener('click', (e) => { if (e.target.id === 'healthPanel') $('healthPanel').style.display = 'none'; });
-function toast(s) { const t = $('toast'); t.textContent = s; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', 2500); }
+function toast(html, ms = 2500) { const t = $('toast'); t.innerHTML = html; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', ms); }
 function showLogin(msg) { $('login').style.display = 'flex'; if (msg) toast(msg); $('key').focus(); }
 $('loginForm').addEventListener('submit', (e) => { e.preventDefault(); key = $('key').value.trim(); store.set('nw2.key', key); $('login').style.display = 'none'; load(); });
 document.addEventListener('click', (e) => {
@@ -594,8 +690,13 @@ document.addEventListener('click', (e) => {
   if (b.id === 'odbtn') { openHealth('overdue'); return; }
   if (b.id === 'healthClose') { $('healthPanel').style.display = 'none'; return; }
   if (b.id === 'refresh') { act('refresh'); setTimeout(load, 8000); return; }
-  if (b.dataset.act && b.dataset.id) { b.disabled = true; act(b.dataset.act, b.dataset.id); }
+  if (b.dataset.undo) { undoAct(b.dataset.undo); $('toast').style.display = 'none'; return; }
+  if (b.dataset.act && b.dataset.id) leaveRow(b, b.dataset.act, b.dataset.id);
 });
+// Hide the mouse cursor when it hasn't moved for 3 s (touch never shows one).
+let curT; const hideCursor = () => document.body.classList.add('nocursor');
+document.addEventListener('mousemove', () => { document.body.classList.remove('nocursor'); clearTimeout(curT); curT = setTimeout(hideCursor, 3000); });
+curT = setTimeout(hideCursor, 3000);
 // Keep the screen on while the page is visible.
 async function wake() { try { await navigator.wakeLock?.request('screen'); } catch {} }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); load(); } });
