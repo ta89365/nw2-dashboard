@@ -232,6 +232,20 @@ body.night #toast button{color:#2457D6}
 .rfoot{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--line)}
 .rfoot .m{flex:1;font-size:14px}
 .rhint{font-size:14px;color:var(--sub);padding:0 0 4px}
+/* ── Gesture legend (Ben 2026-10-28: always on, so you never have to think which way to swipe) ── */
+.hint{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;padding:7px 10px;border-radius:10px;background:color-mix(in srgb,var(--chip) 60%,transparent);font-size:12.5px;font-weight:600;color:var(--sub);white-space:nowrap;flex:none;letter-spacing:.01em}
+.hint span{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.hint svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hint .hand svg{width:18px;height:18px;stroke-width:1.8}
+.hint .hr{color:var(--good)}
+.hint .hand{color:var(--ink)}
+.card.dark .hint,.col.today .hint{background:rgba(255,255,255,.09);color:var(--darksub)}
+.card.dark .hint .hand,.col.today .hint .hand{color:var(--darkink)}
+.col .hint{padding:6px 8px;font-size:12px;margin:0;border-radius:9px}
+.hint .hand svg{animation:tapnudge 40s ease-in-out infinite}
+@keyframes tapnudge{0%,100%{transform:none}1.5%{transform:translateX(5px)}4%{transform:translateX(-5px)}6%{transform:none}}
+.peek{animation:peek 1.4s ease-in-out}
+@keyframes peek{0%,100%{transform:none;background:transparent}30%,55%{transform:translateX(22px);background:color-mix(in srgb,var(--good) 16%,transparent);border-radius:12px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -313,6 +327,13 @@ function meta(t, opts = {}, inline = false) {
   const pill = od ? `<span class="odpill">Overdue · ${plural(od, 'day')}</span>` : '';
   return `<${tag} class="m${late ? ' late' : ''}">${pill}${bits.join(' · ')}</${tag}>`;
 }
+// Gesture legend shown above every swipeable list: ← Tomorrow · hold = details · Done →
+const GI = {
+  left: '<svg viewBox="0 0 24 24"><path d="M20 12H5M11 6l-6 6 6 6"/></svg>',
+  right: '<svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg>',
+  hand: '<svg viewBox="0 0 24 24"><rect x="10.4" y="7.5" width="3.2" height="11.5" rx="1.6" fill="currentColor" stroke="none"/><path d="M7.2 9.2a4.8 4.8 0 0 1 9.6 0"/><path d="M4.8 7.6a7.6 7.6 0 0 1 14.4 0"/><path d="M8.5 21h7"/></svg>',
+};
+const hintBar = (compact = false) => `<div class="hint" aria-hidden="true"><span class="hl">${GI.left}${compact ? 'Tomorrow' : 'Swipe · Tomorrow'}</span><span class="hand">${GI.hand}${compact ? 'Hold' : 'Hold · Details'}</span><span class="hr">${compact ? 'Done' : 'Swipe · Done'}${GI.right}</span></div>`;
 // Check button with a tick that draws itself when tapped (.on)
 const checkBtn = (id, cls = '') => `<button class="check${cls ? ' ' + cls : ''}" type="button" aria-label="Mark done" data-act="done" data-id="${id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>`;
 // Item keys for the "new since last fetch" highlight
@@ -376,12 +397,12 @@ const BLOCKS = {
       const k = `ac:${o.items}`; const first = !allClear.has(k); allClear.add(k);
       o = { ...o, empty: `<div class="allclear${first ? ' draw' : ''}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3L17 9"/></svg>${o.empty}</div>` };
     } else allClear.delete(`ac:${o.items}`);
-    return `<section class="card${o.cls ? ' ' + o.cls : ''}"${o.style ? ` style="${o.style}"` : ''}><h2${o.h2Style ? ` style="${o.h2Style}"` : ''}>${typeof o.title === 'function' ? o.title(v) : o.title} <span class="n"${o.countStyle ? ` style="${o.countStyle}"` : ''}>${o.count ? o.count(items, v) : items.length}</span></h2><div class="list">${list(items, ROWS[o.row], o.empty, o.opts)}</div></section>`;
+    return `<section class="card${o.cls ? ' ' + o.cls : ''}"${o.style ? ` style="${o.style}"` : ''}><h2${o.h2Style ? ` style="${o.h2Style}"` : ''}>${typeof o.title === 'function' ? o.title(v) : o.title} <span class="n"${o.countStyle ? ` style="${o.countStyle}"` : ''}>${o.count ? o.count(items, v) : items.length}</span></h2>${items.length ? hintBar(o.compactHint) : ''}<div class="list">${list(items, ROWS[o.row], o.empty, o.opts)}</div></section>`;
   },
   // 看板式欄（上班模式）。o: title, items, cls, empty, opts
   column: (v, o) => {
     const items = v[o.items];
-    return `<section class="col ${o.cls || ''}"><h2>${o.title}<span class="num">${items.length}</span></h2><div class="list">${list(items, ROWS.kcard, o.empty, o.opts)}</div></section>`;
+    return `<section class="col ${o.cls || ''}"><h2>${o.title}<span class="num">${items.length}</span></h2>${items.length ? hintBar(true) : ''}<div class="list">${list(items, ROWS.kcard, o.empty, o.opts)}</div></section>`;
   },
   // NW2 想問你（深色卡）
   questions: (v) => {
@@ -607,7 +628,7 @@ function detectLayout() {
   return 'compact';
 }
 
-let paintedMode = null;
+let paintedMode = null; const peeked = new Set();
 const prevStat = new Map();
 // Stat numbers tick from the old value to the new one (about 0.4 s)
 function tickNumbers() {
@@ -629,7 +650,12 @@ function render() {
   const main = $('main');
   if (!data) { if (!main.innerHTML) main.innerHTML = '<div class="skel"><div></div><div></div><div></div></div>'; return; }
   const v = derive(data);
-  const paint = () => { $('stats').innerHTML = BLOCKS.stats(v); main.innerHTML = build(LAYOUTS[lay][m], v); tickNumbers(); };
+  const paint = () => {
+    $('stats').innerHTML = BLOCKS.stats(v); main.innerHTML = build(LAYOUTS[lay][m], v); tickNumbers();
+    // First time a mode is shown after loading: the first row of each list peeks right (shows the Done colour) and settles back.
+    // (Delayed a bit so the weather/AQI re-renders that follow the first paint don't cut it short.)
+    if (!peeked.has(m)) { peeked.add(m); setTimeout(() => { if (curMode() === m) main.querySelectorAll('.list').forEach((l) => l.querySelector('[data-key^="t:"]')?.classList.add('peek')); }, 1500); }
+  };
   if (paintedMode !== null && paintedMode !== m) { main.style.opacity = 0; setTimeout(() => { paint(); main.style.opacity = 1; }, 220); }
   else paint();
   paintedMode = m;
@@ -780,7 +806,7 @@ function renderRitual() {
     $('rKick').textContent = 'PLAN MY DAY'; $('rTitle').textContent = `Good morning · ${dateLine}`;
     $('rBody').innerHTML = `<div class="rsum">${wxLine(0)}<span><b>${plural(meets.length, 'meeting')}</b>${meets[0] ? ` · first at ${schedTime(meets[0])}` : ''}</span><span><b>${v.overdue.length} overdue</b></span></div>
       <div class="rhint">Anything you won't get to today? Send it to tomorrow. Already done? Mark it. Everything else stays.</div>
-      <div class="fy-g">Today · ${v.today_list.length}</div>${list(v.today_list, ROWS.both, 'Nothing scheduled — enjoy the open day', {})}
+      <div class="fy-g">Today · ${v.today_list.length}</div>${v.today_list.length ? hintBar() : ''}${list(v.today_list, ROWS.both, 'Nothing scheduled — enjoy the open day', {})}
       ${v.follow_today.length ? `<div class="fy-g">Follow-ups · ${v.follow_today.length}</div>${v.follow_today.map((t) => ROWS.who(t, {})).join('')}` : ''}`;
     $('rDone').textContent = 'Looks good';
   } else {
@@ -788,7 +814,7 @@ function renderRitual() {
     $('rKick').textContent = 'WRAP UP'; $('rTitle').textContent = `Wrap up · ${dateLine}`;
     $('rBody').innerHTML = `<div class="rsum"><span><b>${v.counts.done_today ?? 0}</b> done today</span><span><b>${v.today_list.length}</b> still open</span></div>
       <div class="rhint">Clear what's left: done, or push it to tomorrow.</div>
-      ${list(v.today_list, ROWS.both, 'Everything is wrapped up', {})}
+      ${v.today_list.length ? hintBar() : ''}${list(v.today_list, ROWS.both, 'Everything is wrapped up', {})}
       <div class="fy-g" style="padding-top:16px">Tomorrow first</div>
       <div class="rsum">${first ? `<span><b>${first.start ? `${first.start} ` : ''}${esc(first.title)}</b></span>` : '<span>Nothing scheduled yet</span>'}${wxLine(1)}</div>`;
     $('rDone').textContent = 'All set';
@@ -819,7 +845,7 @@ function openHealth(kind = panelKind) {
   $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : 'System Health';
   $('healthBody').innerHTML = kind === 'overdue'
     ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
-      + (v.overdue.length ? v.overdue.map((t) => ROWS.both(t)).join('') : '<div class="empty">Nothing overdue</div>')
+      + (v.overdue.length ? hintBar() + v.overdue.map((t) => ROWS.both(t)).join('') : '<div class="empty">Nothing overdue</div>')
     : kind === 'questions'
     ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
     : BLOCKS.health(v);
