@@ -203,6 +203,18 @@ body,.card,.col,.wx2,.tab,.hchip,.k{transition:background-color .4s ease,color .
 body.nocursor,body.nocursor *{cursor:none!important}
 #toast button{margin-left:14px;background:none;border:none;color:#8FB0FF;font:inherit;font-weight:700;cursor:pointer;padding:0;height:auto}
 body.night #toast button{color:#2457D6}
+/* ── Swipe + long-press (batch 2) ── */
+[data-key^="t:"]{touch-action:pan-y}
+.sw-r{background:color-mix(in srgb,var(--good) 18%,transparent)!important;border-radius:12px}
+.sw-l{background:color-mix(in srgb,var(--sub) 16%,transparent)!important;border-radius:12px}
+.dt-title{font-size:22px;font-weight:700;line-height:1.3;padding-bottom:12px}
+.dt{display:grid;grid-template-columns:112px 1fr;gap:9px 14px;font-size:15.5px;padding:12px 0;border-top:1px solid var(--line)}
+.dt .dk{color:var(--sub)}
+.dt .dv{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.dt-actions{display:flex;gap:10px;padding:12px 0}
+.dt-qr{display:flex;gap:20px;align-items:center;padding-top:14px;border-top:1px solid var(--line)}
+.qrbox{background:#fff;border-radius:12px;padding:8px;flex:none;width:168px;height:168px;display:flex;align-items:center;justify-content:center;color:#14181F;font-size:12px;text-align:center}
+.qrbox svg{width:152px;height:152px;display:block}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -655,18 +667,72 @@ function queueAct(action, id) {
 function commitAct(id) { const p = pending.get(id); if (!p) return; pending.delete(id); act(p.action, id); }
 function undoAct(id) { const p = pending.get(id); if (!p) return; clearTimeout(p.timer); pending.delete(id); render(); if ($('healthPanel').style.display === 'flex') openHealth(); toast('Undone'); }
 addEventListener('pagehide', () => { for (const [id, p] of pending) { clearTimeout(p.timer); act(p.action, id, { keepalive: true }); } pending.clear(); });
-// A tapped row slides out (right = done, left = tomorrow), then the action is queued.
+// A tapped (or swiped) row slides out (right = done, left = tomorrow), then the action is queued.
 function leaveRow(b, action, id) {
   const row = b.closest('.row,.k,.tl');
   if (action === 'done') b.classList.add('on');
   if (!row) return queueAct(action, id);
+  leaveRowEl(row, action, id, action === 'done' ? 180 : 0);
+}
+function leaveRowEl(row, action, id, delay = 0) {
   row.querySelectorAll('button').forEach((x) => { x.disabled = true; });
-  setTimeout(() => row.classList.add(action === 'done' ? 'leave-r' : 'leave-l'), action === 'done' ? 180 : 0);
-  setTimeout(() => queueAct(action, id), action === 'done' ? 520 : 340);
+  if (action === 'done') row.querySelector('.check')?.classList.add('on');
+  setTimeout(() => { row.style.transition = ''; row.style.transform = ''; row.classList.add(action === 'done' ? 'leave-r' : 'leave-l'); }, delay);
+  setTimeout(() => queueAct(action, id), delay + 340);
+}
+// ── Swipe a task row: right = Done, left = Tomorrow (Ben 2026-10-28). Hold still for half a second = details. ──
+const SWIPE = 90;
+let sw = null;
+document.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const row = e.target.closest('[data-key^="t:"]'); if (!row || e.target.closest('button')) return;
+  const id = row.dataset.key.slice(2);
+  sw = { row, id, x0: e.clientX, y0: e.clientY, dx: 0, moved: false, lp: setTimeout(() => { if (sw && !sw.moved) { sw = null; openDetail(id); } }, 550) };
+});
+document.addEventListener('pointermove', (e) => {
+  if (!sw) return;
+  const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+  if (!sw.moved) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; sw.moved = true; clearTimeout(sw.lp); if (Math.abs(dy) > Math.abs(dx)) { sw = null; return; } }
+  sw.dx = dx; sw.row.style.transition = 'none'; sw.row.style.transform = `translateX(${Math.round(dx * 0.8)}px)`;
+  sw.row.classList.toggle('sw-r', dx > SWIPE); sw.row.classList.toggle('sw-l', dx < -SWIPE);
+});
+function endSwipe() {
+  if (!sw) return; clearTimeout(sw.lp);
+  const { row, id, dx } = sw; sw = null;
+  row.classList.remove('sw-r', 'sw-l');
+  if (dx > SWIPE) leaveRowEl(row, 'done', id);
+  else if (dx < -SWIPE) leaveRowEl(row, 'tomorrow', id);
+  else { row.style.transition = ''; row.style.transform = ''; }
+}
+document.addEventListener('pointerup', endSwipe); document.addEventListener('pointercancel', endSwipe);
+// ── Task details + QR code to open the Notion page on the phone ──
+const findTask = (id) => { for (const k of ['today_list', 'follow_today', 'waiting', 'undated', 'tomorrow_list', 'later', 'reminders']) { const t = (data?.[k] || []).find((x) => x.page_id === id); if (t) return t; } return null; };
+let qrLib = null, detailId = null;
+function loadQR() {
+  if (qrLib) return qrLib;
+  qrLib = new Promise((res, rej) => { const el = document.createElement('script'); el.src = 'qrcode.min.js'; el.onload = () => res(window.qrcode); el.onerror = () => { qrLib = null; rej(new Error('qr')); }; document.head.appendChild(el); });
+  return qrLib;
+}
+function openDetail(id) {
+  const t = findTask(id); if (!t) return;
+  detailId = id; panelKind = 'detail';
+  const when = [t.do_date ? `Do ${shortDay(t.do_date)}${t.time ? ` ${t.time}` : ''}` : '', t.due_date ? `Due ${shortDay(t.due_date)}` : ''].filter(Boolean).join(' · ') || 'No date';
+  const od = odDays(t);
+  const row = (k, v) => `<div class="dk">${k}</div><div class="dv">${v}</div>`;
+  $('panelTitle').textContent = 'Task';
+  $('healthBody').innerHTML = `<div class="dt-title">${esc(t.title)}</div>
+    <div class="dt">${row('Project', esc(t.project || '—'))}${row('When', `${when}${od ? ` <span class="odpill">Overdue · ${plural(od, 'day')}</span>` : ''}`)}${row('Priority', esc(t.priority || '—'))}${row('Type', esc(t.type || '—'))}${row('Status', t.state === 'Waiting' ? 'Waiting on someone' : 'Open')}${row('Added by', t.mine ? 'You' : 'NW2')}</div>
+    <div class="dt-actions"><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">Done</button></div>
+    ${t.url ? `<div class="dt-qr"><div class="qrbox" id="qr">…</div><div class="m" style="font-size:15px">Scan with your phone to open this task in Notion.</div></div>` : ''}`;
+  $('healthPanel').style.display = 'flex';
+  if (t.url) loadQR().then((qrcode) => { const q = qrcode(0, 'M'); q.addData(t.url); q.make(); const box = $('qr'); if (box) box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); })
+    .catch(() => { const box = $('qr'); if (box) box.textContent = 'QR unavailable right now'; });
 }
 let panelKind = 'health';
 function openHealth(kind = panelKind) {
-  if (!data) return; panelKind = kind;
+  if (!data) return;
+  if (kind === 'detail') { if (findTask(detailId) && !pending.has(detailId)) openDetail(detailId); else $('healthPanel').style.display = 'none'; return; }
+  panelKind = kind;
   const v = derive(data);
   $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : 'System Health';
   $('healthBody').innerHTML = kind === 'overdue'
@@ -691,7 +757,10 @@ document.addEventListener('click', (e) => {
   if (b.id === 'healthClose') { $('healthPanel').style.display = 'none'; return; }
   if (b.id === 'refresh') { act('refresh'); setTimeout(load, 8000); return; }
   if (b.dataset.undo) { undoAct(b.dataset.undo); $('toast').style.display = 'none'; return; }
-  if (b.dataset.act && b.dataset.id) leaveRow(b, b.dataset.act, b.dataset.id);
+  if (b.dataset.act && b.dataset.id) {
+    if (panelKind === 'detail' && b.closest('#healthPanel')) { $('healthPanel').style.display = 'none'; queueAct(b.dataset.act, b.dataset.id); return; }
+    leaveRow(b, b.dataset.act, b.dataset.id);
+  }
 });
 // Hide the mouse cursor when it hasn't moved for 3 s (touch never shows one).
 let curT; const hideCursor = () => document.body.classList.add('nocursor');
