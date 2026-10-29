@@ -100,6 +100,21 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .stat.good .v{color:var(--good)}
 .stat.zero .v{color:var(--sub)}
 body[data-layout="narrow"] .stats>*,body[data-layout="tall"] .stats>*{display:none}
+/* overdue (Ben 2026-10-28: make it obvious which tasks are overdue) */
+.odpill{display:inline-block;background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);font-weight:700;font-size:12px;border-radius:6px;padding:1px 7px;margin-right:6px;white-space:nowrap}
+button.stat{background:none;border-top:none;border-right:none;border-bottom:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+button.stat:first-child{border-left:none}
+button.stat .l{text-decoration:underline dotted;text-underline-offset:3px}
+.defn{font-size:14px;color:var(--sub);padding:0 0 10px}
+/* evening: tomorrow + coming up */
+.dayrow{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.dayrow .dn{flex:none;width:86px;font-size:15px;font-weight:500}
+.dayrow .bar{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.dayrow .bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.dayrow .ct{flex:none;width:26px;text-align:right;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px}
+.dayrow.z .dn,.dayrow.z .ct{color:var(--sub)}
+.prow{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);align-items:flex-start}
+.prow .t{font-size:16px}
 /* weather */
 .wx2{background:var(--card);border-radius:20px;padding:20px 24px 16px;display:flex;flex-direction:column;gap:14px;flex:none}
 .wx-top{display:flex;align-items:center;gap:14px}
@@ -215,17 +230,20 @@ const shortDay = (ymd) => { const d = new Date(ymd + 'T12:00:00Z'); return `${WD
 // 網址加 ?view=<名稱> 可強制使用某種版面。
 
 // ── 共用小零件 ──
+// Overdue = the Do Date or the Due Date is before today and the task isn't done (Ben 2026-10-28). Days = the larger of the two.
+const odDays = (t) => Math.max(t.late_days || 0, t.due_in !== null && t.due_in < 0 ? -t.due_in : 0);
 function meta(t, opts = {}, inline = false) {
   const bits = [];
   if (t.project) bits.push(esc(t.project));
   if (t.time) bits.push(t.time);
   let late = false;
-  if (t.late_days > 0) { bits.push(t.late_days === 1 ? 'from yesterday' : `${t.late_days} days overdue`); late = true; }
-  else if (opts.showDate && (t.do_date || t.due_date)) bits.push(shortDay(t.do_date || t.due_date));
-  if (t.due_in !== null && t.due_in <= 0 && !(t.late_days > 0)) { bits.push(t.due_in === 0 ? 'due today' : `${plural(-t.due_in, 'day')} past due`); late = true; }
-  else if (t.due_in !== null && t.due_in > 0 && t.due_in <= 3) bits.push(`due in ${plural(t.due_in, 'day')}`);
+  const od = odDays(t);
+  if (!od && opts.showDate && (t.do_date || t.due_date)) bits.push(shortDay(t.do_date || t.due_date));
+  if (!od && t.due_in === 0) { bits.push('due today'); late = true; }
+  else if (!od && t.due_in !== null && t.due_in > 0 && t.due_in <= 3) bits.push(`due in ${plural(t.due_in, 'day')}`);
   const tag = inline ? 'span' : 'div';
-  return `<${tag} class="m${late ? ' late' : ''}">${bits.join(' · ')}</${tag}>`;
+  const pill = od ? `<span class="odpill">Overdue · ${plural(od, 'day')}</span>` : '';
+  return `<${tag} class="m${late ? ' late' : ''}">${pill}${bits.join(' · ')}</${tag}>`;
 }
 const initial = (title) => { const m = /^(?:Waiting on|Follow up)\s+([^\s:,&]+)/i.exec(title) || /^([^\s:]+):/.exec(title); return m ? esc([...m[1]].slice(0, 2).join('')) : '…'; };
 const cleanTitle = (title) => esc(title.replace(/^Waiting on\s+/i, ''));
@@ -239,6 +257,8 @@ const ROWS = {
   who: (t, opts) => `<div class="row"><div class="who" aria-hidden="true">${initial(t.title)}</div><div style="min-width:0;flex:1"><div class="t">${cleanTitle(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
   // 右邊「改明天」＋「完成」
   both: (t) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(t.title)}</div>${meta(t)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button><button class="btn primary" type="button" data-act="done" data-id="${t.page_id}">Done</button></div>`,
+  // 左邊打勾（Done）、右邊「Tomorrow」— for narrow columns (evening wrap-up)
+  checkTmr: (t, opts) => `<div class="row"><button class="check" type="button" aria-label="Mark done" data-act="done" data-id="${t.page_id}"></button><div style="min-width:0;flex:1"><div class="t">${esc(t.title)}</div>${meta(t, opts)}</div><button class="btn" type="button" data-act="tomorrow" data-id="${t.page_id}">Tomorrow</button></div>`,
   // 左邊時間（明天的行程）
   timed: (t) => `<div class="row"><div style="flex:none;width:64px;color:var(--sub);font-size:15px;padding-top:2px" class="num">${t.time || 'All day'}</div><div style="min-width:0"><div class="t" style="font-size:18px">${esc(t.title)}</div>${meta(t)}</div></div>`,
   // 看板式小卡（上班模式的欄）
@@ -253,7 +273,8 @@ const ROWS = {
 function derive(d) {
   const hero = d.reminders[0] || d.today_list[0] || null;
   const rest = d.today_list.filter((t) => t !== hero && t.page_id !== hero?.page_id);
-  return { ...d, hero, rest, ...deriveNotices(d) };
+  const overdue = [...d.today_list, ...d.follow_today].filter((t) => odDays(t) > 0).sort((a, b) => odDays(b) - odDays(a));
+  return { ...d, hero, rest, overdue, ...deriveNotices(d) };
 }
 
 // ── 積木 ──
@@ -306,7 +327,7 @@ const T = { // 常用的積木設定，各版面共用
   colFollow:  { block: 'column', title: 'Follow-Ups', items: 'follow_today', empty: 'No follow-ups today' },
   colWaiting: { block: 'column', title: 'Waiting On', items: 'waiting', empty: 'Not waiting on anyone', opts: { showDate: true } },
   colUndated: { block: 'column', title: 'No Date', items: 'undated', empty: 'None' },
-  leftToday:  { block: 'tasks', title: 'Still Open Today', items: 'today_list', row: 'both', empty: 'All wrapped up', style: 'flex:1', countStyle: 'color:var(--warn)' },
+  leftToday:  { block: 'tasks', title: 'Still Open Today', items: 'today_list', row: 'checkTmr', empty: 'All wrapped up', style: 'flex:1', countStyle: 'color:var(--warn)' },
   tomorrow:   { block: 'tasks', title: (v) => `Tomorrow · ${shortDay(v.tomorrow)}`, count: (items) => plural(items.length, 'item'), items: 'tomorrow_list', row: 'timed', empty: 'Nothing scheduled tomorrow', style: 'padding:26px 30px', h2Style: 'font-size:26px', countStyle: 'font-size:16px' },
 };
 const LAYOUTS = {
@@ -314,13 +335,14 @@ const LAYOUTS = {
     // Ben 2026-10-28: weather + schedule | FYI | To-Do + Follow-Ups (Questions moved to the header chip)
     morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'timeline'] }, 'fyi', { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
     work: { cls: 'grid4', items: [T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
-    evening: { cls: 'split', items: [{ cls: 'stack', style: 'gap:22px;min-height:0;height:auto', items: ['week', T.leftToday] }, T.tomorrow] },
+    // Ben 2026-10-28: evening = wrap up today | plan tomorrow (weather, schedule, tasks) | the rest of the week
+    evening: { cls: 'grid3a', items: [T.leftToday, { cls: 'stack', items: [{ block: 'weather', day: 1 }, 'tmrPlan'] }, 'coming'] },
   },
 };
 // 還沒設計的版面先沿用 compact（之後一種一種定）
 // ── Reminders (dash-d3 notices) + weather (Open-Meteo, fetched by this page; if it fails the block just hides) ──
 // Ben 2026-10-28: option A layout (schedule timeline + FYI list) with option B's weather (hourly rain chart).
-const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37&current=temperature_2m,precipitation,weather_code&hourly=precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FChicago&forecast_days=2';
+const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37&current=temperature_2m,precipitation,weather_code&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FChicago&forecast_days=2';
 let wx = null;
 async function loadWx() { try { const r = await fetch(WX_URL, { cache: 'no-store' }); if (!r.ok) throw 0; wx = await r.json(); render(); } catch {} }
 const WMO = (c) => c === 0 ? ['Clear', 'sun'] : c <= 2 ? ['Partly cloudy', 'part'] : c === 3 ? ['Cloudy', 'cloud'] : c <= 48 ? ['Foggy', 'cloud']
@@ -333,10 +355,10 @@ function wxIcon(kind, size = 52) {
   const body = kind === 'sun' ? '<circle cx="28" cy="28" r="12" fill="#F2B233"/>' : kind === 'part' ? sun + cloud : kind === 'rain' ? cloud + drops : kind === 'storm' ? cloud + bolt : cloud;
   return `<svg width="${size}" height="${size}" viewBox="0 0 60 60" aria-hidden="true">${body}</svg>`;
 }
-// Chance of rain for the rest of today (now through 21:00)
-function rainAhead(w, today) {
-  const c = chi(); const out = [];
-  w.hourly.time.forEach((t, i) => { const h = +t.slice(11, 13); if (t.startsWith(today) && h >= c.h && h <= 21) out.push({ h, p: w.hourly.precipitation_probability[i] ?? 0 }); });
+// Hourly chance of rain for one day, from hour `from` through 21:00 (today: from now; tomorrow: from 07:00)
+function rainAhead(w, date, from = chi().h) {
+  const out = [];
+  w.hourly.time.forEach((t, i) => { const h = +t.slice(11, 13); if (t.startsWith(date) && h >= from && h <= 21) out.push({ h, p: w.hourly.precipitation_probability[i] ?? 0 }); });
   return out;
 }
 const hh = (h) => `${String(h).padStart(2, '0')}:00`;
@@ -355,7 +377,14 @@ function deriveNotices(d) {
     s.state = s.all_day ? 'live' : s.kind === 'meet' ? (en !== null && en <= now ? 'past' : st <= now ? 'live' : 'next') : (st < now ? 'late' : 'next');
   }
   const timed = new Set(d.reminders.map((t) => t.page_id));
-  return { sched, tmrMeet: (n.meetings || []).filter((m) => m.date === d.tomorrow), fyi: n.fyi || [],
+  const tmrMeet = (n.meetings || []).filter((m) => m.date === d.tomorrow);
+  // Tomorrow (evening mode): meetings + timed tasks by time; the rest of tomorrow's tasks; FYI dated tomorrow / later
+  const tmrSched = [...tmrMeet.map((m) => ({ kind: 'meet', start: m.start, end: m.end, all_day: m.all_day, title: m.subject, sub: [m.place, m.online].filter(Boolean).join(' · ') })),
+    ...d.tomorrow_list.filter((t) => t.time).map((t) => ({ kind: 'task', start: t.time, end: null, title: t.title, sub: t.project ? t.project.split(' - ')[0] : '' }))]
+    .sort((a, b) => (b.all_day ? 1 : 0) - (a.all_day ? 1 : 0) || (a.start || '').localeCompare(b.start || ''));
+  const fy = n.fyi || [];
+  return { sched, tmrMeet, tmrSched, tmrTasks: d.tomorrow_list.filter((t) => !t.time), fyi: fy,
+    fyiTmr: fy.filter((f) => f.due_date === d.tomorrow), fyiLater: fy.filter((f) => f.due_date && f.due_date > d.tomorrow),
     todayPlain: d.today_list.filter((t) => !timed.has(t.page_id)) };
 }
 const FYG = { today: 'Today', new: 'New', upcoming: 'Coming Up' };
@@ -364,31 +393,37 @@ const fyBadge = (f) => f.group === 'today' ? '<span class="badge today">Today</s
 const schedTime = (s) => s.all_day ? 'All day' : s.start;
 
 Object.assign(BLOCKS, {
-  // Weather: now, high/low, umbrella hint, and an hourly chance-of-rain chart for the rest of today
-  weather: (v) => {
+  // Weather: now (or tomorrow's forecast with o.day = 1), high/low, umbrella hint, hourly chance-of-rain chart
+  weather: (v, o) => {
     if (!wx?.current) return '';
-    const [lbl, kind] = WMO(wx.current.weather_code);
-    const hi = Math.round(wx.daily.temperature_2m_max[0]), lo = Math.round(wx.daily.temperature_2m_min[0]);
-    const ahead = rainAhead(wx, v.today); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
+    const day = o.day === 1 ? 1 : 0;
+    const date = day ? v.tomorrow : v.today;
+    const code = day ? wx.daily.weather_code?.[1] : wx.current.weather_code;
+    if (code === undefined) return '';
+    const [lbl, kind] = WMO(code);
+    const hi = Math.round(wx.daily.temperature_2m_max[day]), lo = Math.round(wx.daily.temperature_2m_min[day]);
+    const ahead = rainAhead(wx, date, day ? 7 : chi().h); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
+    const when = day ? ' tomorrow' : '';
     const umbIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9zM12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-    const rainNote = peak.p >= 40 ? `<div class="umbpill">${umbIcon}Grab an umbrella · ${peak.p}% around ${hh(peak.h)}</div>`
-      : `<div class="norain">${peak.p >= 20 ? `Up to ${peak.p}% chance of rain` : 'No rain expected'}</div>`;
+    const rainNote = peak.p >= 40 ? `<div class="umbpill">${umbIcon}Grab an umbrella${when} · ${peak.p}% around ${hh(peak.h)}</div>`
+      : `<div class="norain">${peak.p >= 20 ? `Up to ${peak.p}% chance of rain${when}` : `No rain expected${when}`}</div>`;
     // Bars for each hour left today; the wettest hour is darker and labeled
     const bars = ahead.map((a) => `<div class="b${a === peak && a.p >= 20 ? ' hi' : ''}" title="${hh(a.h)} ${a.p}%">${a === peak && a.p >= 20 ? `<span>${a.p}%</span>` : ''}<i style="height:${Math.max(6, a.p * 0.78)}%"></i></div>`).join('');
     return `<section class="wx2">
-      <div class="wx-top">${wxIcon(kind, 54)}<div class="tmp">${Math.round(wx.current.temperature_2m)}°</div>
-        <div style="min-width:0;margin-left:4px"><div class="lbl">${lbl}</div><div class="hl">H ${hi}° · L ${lo}°</div></div></div>
+      <div class="wx-top">${wxIcon(kind, 54)}<div class="tmp">${day ? `${hi}°` : `${Math.round(wx.current.temperature_2m)}°`}</div>
+        <div style="min-width:0;margin-left:4px"><div class="lbl">${day ? `Tomorrow · ${lbl}` : lbl}</div><div class="hl">${day ? `${shortDay(v.tomorrow)} · ` : ''}H ${hi}° · L ${lo}°</div></div></div>
       ${rainNote}
       ${ahead.length > 1 ? `<div class="chart"><div class="bars">${bars}</div><div class="rainx"><span>${hh(ahead[0].h)}</span><span>Chance of rain</span><span>${hh(ahead[ahead.length - 1].h)}</span></div></div>` : ''}</section>`;
   },
   // Header stats: Overdue · To-Do Today · Meetings (next one) · Done Today
   stats: (v) => {
-    const overdue = v.today_list.filter((t) => t.late_days > 0 || (t.due_in !== null && t.due_in < 0)).length;
+    const overdue = v.overdue.length;
     const meets = v.sched.filter((s) => s.kind === 'meet');
     const nextMeet = meets.find((s) => s.state === 'next' || s.state === 'live');
     const done = v.counts.done_today;
-    const tile = (val, label, cls = '', sub = '') => `<div class="stat ${cls}${val === 0 && !cls.includes('bad') ? ' zero' : ''}"><div class="v">${val}</div><div class="l">${label}</div><div class="s">${sub}</div></div>`;
-    return tile(overdue, 'Overdue', overdue ? 'bad' : '')
+    const tile = (val, label, cls = '', sub = '', id = '') => { const el = id ? 'button' : 'div';
+      return `<${el} class="stat ${cls}${val === 0 && !cls.includes('bad') ? ' zero' : ''}"${id ? ` id="${id}" type="button"` : ''}><div class="v">${val}</div><div class="l">${label}</div><div class="s">${sub}</div></${el}>`; };
+    return tile(overdue, 'Overdue', overdue ? 'bad' : '', overdue ? 'Tap to see' : '', overdue ? 'odbtn' : '')
       + tile(v.counts.today, 'To-Do Today')
       + tile(meets.length, meets.length === 1 ? 'Meeting' : 'Meetings', '', nextMeet ? (nextMeet.state === 'live' ? `In progress till ${nextMeet.end}` : `Next at ${nextMeet.start}`) : (meets.length ? 'All done' : ''))
       + (done === undefined ? '' : tile(done, 'Done Today', done ? 'good' : ''));
@@ -408,6 +443,26 @@ Object.assign(BLOCKS, {
     if (!lined) rows.push(nowLine);
     const tmr = v.tmrMeet.length ? `<div class="tmr">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}${v.tmrMeet.length > 2 ? ` +${v.tmrMeet.length - 2} more` : ''}</div>` : '';
     return `<section class="card"><h2>Schedule <span class="n">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings or timed reminders today</div>'}</div>${tmr}</section>`;
+  },
+  // Evening: tomorrow at a glance — schedule (meetings + timed tasks), the other tasks, heads-ups dated tomorrow
+  tmrPlan: (v) => {
+    const sec = (title, n, body) => `<div class="fy-g">${title}${n ? ` · ${n}` : ''}</div>${body}`;
+    const sched = v.tmrSched.map((s) => `<div class="tl ${s.kind}"><div class="tl-time">${schedTime(s)}${s.end ? `<span class="e">${s.end}</span>` : ''}</div><div class="tl-bar"></div>
+      <div style="min-width:0;flex:1"><div class="t">${esc(s.title)}</div>${s.sub ? `<div class="m">${esc(s.sub)}</div>` : ''}</div></div>`).join('');
+    const tasks = v.tmrTasks.map((t) => `<div class="prow">${t.state === 'Waiting' ? '<span class="badge">Follow up</span>' : '<span class="badge">To-Do</span>'}<div style="min-width:0"><div class="t">${cleanTitle(t.title)}</div>${meta(t)}</div></div>`).join('');
+    const heads = v.fyiTmr.map((f) => `<div class="fy">${fyBadge(f)}<div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join('');
+    const body = (v.tmrSched.length ? sec('Schedule', v.tmrSched.length, sched) : sec('Schedule', 0, '<div class="empty" style="padding:4px 0 8px">No meetings</div>'))
+      + (v.tmrTasks.length ? sec('To-Do', v.tmrTasks.length, tasks) : '') + (v.fyiTmr.length ? sec('Heads-up', v.fyiTmr.length, heads) : '');
+    return `<section class="card"><h2>Tomorrow · ${shortDay(v.tomorrow)} <span class="n">${v.tmrSched.length + v.tmrTasks.length}</span></h2><div class="list">${body}</div></section>`;
+  },
+  // Evening: the rest of the week (tasks per day as bars), later dated tasks, later heads-ups — one item per row
+  coming: (v) => {
+    const max = Math.max(1, ...v.week.map((w) => w.n));
+    const days = v.week.map((w) => `<div class="dayrow${w.n ? '' : ' z'}"><div class="dn">${shortDay(w.date)}</div><div class="bar"><i style="width:${w.n ? Math.max(6, (w.n / max) * 100) : 0}%"></i></div><div class="ct">${w.n}</div></div>`).join('');
+    const later = v.later.map((t) => `<div class="prow"><span class="badge">${shortDay(t.do_date || t.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(t.title)}</div>${t.project ? `<div class="m c1">${esc(t.project)}</div>` : ''}</div></div>`).join('');
+    const heads = v.fyiLater.map((f) => `<div class="prow"><span class="badge">${shortDay(f.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join('');
+    return `<section class="card"><h2>Coming Up</h2><div class="list"><div class="fy-g">Next 7 Days · tasks per day</div>${days}
+      ${later ? `<div class="fy-g">Later</div>${later}` : ''}${heads ? `<div class="fy-g">Heads-up</div>${heads}` : ''}</div></section>`;
   },
   // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
   fyi: (v, o) => {
@@ -496,8 +551,11 @@ let panelKind = 'health';
 function openHealth(kind = panelKind) {
   if (!data) return; panelKind = kind;
   const v = derive(data);
-  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : 'System Health';
-  $('healthBody').innerHTML = kind === 'questions'
+  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : 'System Health';
+  $('healthBody').innerHTML = kind === 'overdue'
+    ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
+      + (v.overdue.length ? v.overdue.map((t) => ROWS.both(t)).join('') : '<div class="empty">Nothing overdue</div>')
+    : kind === 'questions'
     ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
     : BLOCKS.health(v);
   $('healthPanel').style.display = 'flex';
@@ -512,6 +570,7 @@ document.addEventListener('click', (e) => {
   if (b.id === 'fs') { toggleFs(); return; }
   if (b.id === 'status') { openHealth('health'); return; }
   if (b.id === 'qchip') { openHealth('questions'); return; }
+  if (b.id === 'odbtn') { openHealth('overdue'); return; }
   if (b.id === 'healthClose') { $('healthPanel').style.display = 'none'; return; }
   if (b.id === 'refresh') { act('refresh'); setTimeout(load, 8000); return; }
   if (b.dataset.act && b.dataset.id) { b.disabled = true; act(b.dataset.act, b.dataset.id); }
