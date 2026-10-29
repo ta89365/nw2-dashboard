@@ -17,8 +17,13 @@ button{font-family:inherit;cursor:pointer}
 .num{font-family:'Space Grotesk',sans-serif}
 #app{height:100vh;display:flex;flex-direction:column;padding:28px 40px 24px;gap:28px}
 header{display:flex;align-items:flex-end;gap:24px}
-.clock{font-size:88px;font-weight:600;line-height:1;letter-spacing:-2px}
+.clock{font-size:82px;font-weight:600;line-height:1;letter-spacing:-2px}
 .date{font-size:19px;color:var(--sub);font-weight:500}
+.tz{font-size:15px;color:var(--sub);margin-top:5px}
+.tz b{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--ink);font-size:16px}
+.wx-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.aqi{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:6px 11px;font-size:14px;font-weight:700;background:color-mix(in srgb,var(--aq) 14%,transparent);color:var(--aq)}
+.aqi i{width:8px;height:8px;border-radius:4px;background:var(--aq)}
 .grow{flex:1}
 .stack{display:flex;flex-direction:column;gap:18px;height:100%}
 .tabs{display:flex;gap:8px}
@@ -221,7 +226,7 @@ body.night #toast button{color:#2457D6}
 <body>
 <div id="app">
   <header>
-    <div><div class="date" id="date"></div><div class="clock num" id="clock">--:--</div></div>
+    <div><div class="date" id="date"></div><div class="clock num" id="clock">--:--</div><div class="tz" id="tz"></div></div>
     <div class="stats" id="stats"></div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
       <nav class="tabs" aria-label="Mode">
@@ -410,9 +415,16 @@ const LAYOUTS = {
 // 還沒設計的版面先沿用 compact（之後一種一種定）
 // ── Reminders (dash-d3 notices) + weather (Open-Meteo, fetched by this page; if it fails the block just hides) ──
 // Ben 2026-10-28: option A layout (schedule timeline + FYI list) with option B's weather (hourly rain chart).
-const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37&current=temperature_2m,precipitation,weather_code&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FChicago&forecast_days=2';
-let wx = null;
-async function loadWx() { try { const r = await fetch(WX_URL, { cache: 'no-store' }); if (!r.ok) throw 0; wx = await r.json(); render(); } catch {} }
+const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37&current=temperature_2m,precipitation,weather_code&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&temperature_unit=fahrenheit&timezone=America%2FChicago&forecast_days=2';
+const AQ_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=29.76&longitude=-95.37&current=us_aqi&timezone=America%2FChicago';
+let wx = null, aq = null;
+async function loadWx() {
+  try { const r = await fetch(WX_URL, { cache: 'no-store' }); if (!r.ok) throw 0; wx = await r.json(); render(); } catch {}
+  try { const r = await fetch(AQ_URL, { cache: 'no-store' }); if (!r.ok) throw 0; aq = (await r.json()).current?.us_aqi ?? null; render(); } catch {}
+}
+// US AQI bands → label + color
+const aqiBand = (v) => v <= 50 ? ['Good', '#1E8E4E'] : v <= 100 ? ['Moderate', '#B08A00'] : v <= 150 ? ['Unhealthy for sensitive groups', '#C65A00'] : v <= 200 ? ['Unhealthy', '#C62828'] : ['Very unhealthy', '#7B1FA2'];
+const hhmm = (iso) => iso ? iso.slice(11, 16) : null;
 const WMO = (c) => c === 0 ? ['Clear', 'sun'] : c <= 2 ? ['Partly cloudy', 'part'] : c === 3 ? ['Cloudy', 'cloud'] : c <= 48 ? ['Foggy', 'cloud']
   : c <= 57 ? ['Drizzle', 'rain'] : c <= 67 ? ['Rain', 'rain'] : c <= 77 ? ['Snow', 'cloud'] : c <= 82 ? ['Showers', 'rain'] : ['Thunderstorms', 'storm'];
 function wxIcon(kind, size = 52) {
@@ -473,6 +485,9 @@ Object.assign(BLOCKS, {
     const hi = Math.round(wx.daily.temperature_2m_max[day]), lo = Math.round(wx.daily.temperature_2m_min[day]);
     const ahead = rainAhead(wx, date, day ? 7 : chi().h); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
     const when = day ? ' tomorrow' : '';
+    const sunrise = hhmm(wx.daily.sunrise?.[day]), sunset = hhmm(wx.daily.sunset?.[day]);
+    const sun = sunrise && sunset ? `<div class="hl">Sunrise ${sunrise} · Sunset ${sunset}</div>` : '';
+    const aqi = !day && aq !== null ? (([lbl, col]) => `<span class="aqi" style="--aq:${col}"><i></i>AQI ${Math.round(aq)} · ${lbl}</span>`)(aqiBand(aq)) : '';
     const umbIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9zM12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
     const rainNote = peak.p >= 40 ? `<div class="umbpill">${umbIcon}Grab an umbrella${when} · ${peak.p}% around ${hh(peak.h)}</div>`
       : `<div class="norain">${peak.p >= 20 ? `Up to ${peak.p}% chance of rain${when}` : `No rain expected${when}`}</div>`;
@@ -480,8 +495,8 @@ Object.assign(BLOCKS, {
     const bars = ahead.map((a) => `<div class="b${a === peak && a.p >= 20 ? ' hi' : ''}" title="${hh(a.h)} ${a.p}%">${a === peak && a.p >= 20 ? `<span>${a.p}%</span>` : ''}<i style="height:${Math.max(6, a.p * 0.78)}%"></i></div>`).join('');
     return `<section class="wx2">
       <div class="wx-top">${wxIcon(kind, 54)}<div class="tmp">${day ? `${hi}°` : `${Math.round(wx.current.temperature_2m)}°`}</div>
-        <div style="min-width:0;margin-left:4px"><div class="lbl">${day ? `Tomorrow · ${lbl}` : lbl}</div><div class="hl">${day ? `${shortDay(v.tomorrow)} · ` : ''}H ${hi}° · L ${lo}°</div></div></div>
-      ${rainNote}
+        <div style="min-width:0;margin-left:4px"><div class="lbl">${day ? `Tomorrow · ${lbl}` : lbl}</div><div class="hl">${day ? `${shortDay(v.tomorrow)} · ` : ''}H ${hi}° · L ${lo}°</div>${sun}</div></div>
+      <div class="wx-row">${rainNote}${aqi}</div>
       ${ahead.length > 1 ? `<div class="chart"><div class="bars">${bars}</div><div class="rainx"><span>${hh(ahead[0].h)}</span><span>Chance of rain</span><span>${hh(ahead[ahead.length - 1].h)}</span></div></div>` : ''}</section>`;
   },
   // Header stats: Overdue · To-Do Today · Meetings (next one) · Done Today
@@ -611,7 +626,9 @@ addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(r
 function tick() {
   const c = chi();
   $('clock').textContent = `${String(c.h).padStart(2,'0')}:${String(c.m).padStart(2,'0')}`;
+  const tp = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
   $('date').textContent = `${WDL[c.wd]}, ${MON[c.mon - 1]} ${c.day}`;
+  $('tz').innerHTML = `Taipei <b>${String(+tp.hour % 24).padStart(2, '0')}:${tp.minute}</b> · ${tp.weekday}`;
   const st = $('status');
   if (data) { const q = data.questions.total; $('qchip').innerHTML = q ? `Questions <b>${q}</b>` : 'No questions'; $('qchip').style.color = q ? '' : 'var(--sub)'; }
   if (data) {
