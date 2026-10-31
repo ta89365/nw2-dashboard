@@ -984,11 +984,18 @@ async function unwake() { try { await wakeSentinel?.release(); } catch {} wakeSe
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); load(); } });
 // Screen off: the page goes black and lets go of the wake lock, so Windows' screen timeout (Ben sets 1 minute) switches the
 // backlight off without leaving full screen. A tap wakes the display (Windows), the next tap brings the board back.
+// Ben 2026-10-30, "right away please": after going black the page also opens nw2screen:off — a link protocol the Surface
+// registers once (surface/NW2 Screen Off.reg → NW2 Screen Off.ps1) that turns the display off immediately. Where the
+// protocol isn't registered nothing happens and the 1-minute timeout still applies.
 function setScreenOff(on) {
   screenOff = on; store.set('nw2.screenoff', on ? '1' : '0');
   const el = $('off'); el.style.display = on ? 'block' : 'none';
-  if (on) { closeVoice(); closeRitual(false); $('healthPanel').style.display = 'none'; $('toast').style.display = 'none'; el.querySelector('.offhint').style.animation = 'none'; void el.offsetWidth; el.querySelector('.offhint').style.animation = ''; unwake(); }
-  else { wake(); load(); }
+  if (on) {
+    closeVoice(); closeRitual(false); $('healthPanel').style.display = 'none'; $('toast').style.display = 'none';
+    el.querySelector('.offhint').style.animation = 'none'; void el.offsetWidth; el.querySelector('.offhint').style.animation = '';
+    unwake();
+    setTimeout(() => { try { location.assign('nw2screen:off'); } catch {} }, 600);
+  } else { wake(); load(); }
 }
 $('off').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); setScreenOff(false); }, true);
 $('off').addEventListener('click', (e) => e.stopPropagation(), true);
