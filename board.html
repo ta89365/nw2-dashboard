@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
 <style>
-:root{--good:#1E8E4E;--bad:#C62828;--bg:#EEF1F4;--card:#FFFFFF;--ink:#14181F;--sub:#4A5260;--line:#E3E7ED;--accent:#2457D6;--warn:#B4500B;--chip:#DCE3EC;--dark:#14181F;--darkink:#FFFFFF;--darksub:#AEB6C2}
-body.night{--good:#5BC98A;--bad:#FF7A7A;--bg:#0F1318;--card:#1A2028;--ink:#E8ECF1;--sub:#9AA5B3;--line:#2A323D;--accent:#8FB0FF;--warn:#F0A35E;--chip:#24364F;--dark:#24364F;--darkink:#E8ECF1;--darksub:#9AA5B3}
+:root{--good:#1E8E4E;--bad:#C62828;--amber:#F5B301;--amberbg:#FFF5D6;--bg:#EEF1F4;--card:#FFFFFF;--ink:#14181F;--sub:#4A5260;--line:#E3E7ED;--accent:#2457D6;--warn:#B4500B;--chip:#DCE3EC;--dark:#14181F;--darkink:#FFFFFF;--darksub:#AEB6C2}
+body.night{--good:#5BC98A;--bad:#FF7A7A;--amber:#FFC93C;--amberbg:#3A3010;--bg:#0F1318;--card:#1A2028;--ink:#E8ECF1;--sub:#9AA5B3;--line:#2A323D;--accent:#8FB0FF;--warn:#F0A35E;--chip:#24364F;--dark:#24364F;--darkink:#E8ECF1;--darksub:#9AA5B3}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans TC',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
@@ -84,10 +84,10 @@ body.night .who{background:#24364F;color:#C3D4FF}
 #login input{height:52px;font-size:18px;padding:0 14px;border-radius:12px;border:1px solid var(--line)}
 .hchip{height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14px;display:flex;align-items:center;gap:8px}
 .dot{width:10px;height:10px;border-radius:5px;flex:none;background:var(--good)}
-.lv-warn .dot,.dot.lv-warn{background:var(--warn)}
+.lv-warn .dot,.dot.lv-warn{background:var(--amber)}
 .lv-bad .dot,.dot.lv-bad{background:var(--bad)}
 .hchip.lv-bad{border-color:var(--bad);color:var(--bad);font-weight:700}
-.hchip.lv-warn{border-color:var(--warn)}
+.hchip.lv-warn{border-color:var(--amber);background:var(--amberbg)}
 #healthPanel{position:fixed;inset:0;background:rgba(10,14,20,.45);display:none;align-items:center;justify-content:center;z-index:5}
 #healthPanel .sheet{background:var(--bg);border-radius:22px;padding:24px 26px;width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 48px);display:flex;flex-direction:column;gap:12px}
 .hrow{display:flex;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
