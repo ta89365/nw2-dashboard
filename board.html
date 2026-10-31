@@ -271,6 +271,12 @@ body.night #toast button{color:#2457D6}
 .vbtns{display:flex;gap:10px;justify-content:flex-end;align-items:center}
 .vbtns .m{flex:1}
 .vbtns .btn[disabled]{opacity:.45}
+/* ── Screen off (Ben 2026-10-30): black page + wake lock released, so Windows' own screen timeout turns the backlight off ── */
+#off{position:fixed;inset:0;background:#000;display:none;z-index:50;cursor:none;touch-action:none}
+#off .offhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#3A414B;font-size:17px;font-weight:500;animation:offhint 6s ease forwards}
+@keyframes offhint{0%,60%{opacity:1}100%{opacity:0}}
+.tab.ic{width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.tab.ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -287,7 +293,8 @@ body.night #toast button{color:#2457D6}
         <button class="tab" data-mode="evening" type="button">Evening</button>
         <button class="tab" id="refresh" type="button" aria-label="Refresh">↻</button>
         <button class="tab mic" id="mic" type="button" aria-label="Add by voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button>
-        <button class="tab" id="fs" type="button">Full screen</button>
+        <button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button>
       </nav>
       <div class="chips"><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
     </div>
@@ -308,6 +315,7 @@ body.night #toast button{color:#2457D6}
   <textarea id="vText" placeholder="Listening… or tap here to type" maxlength="500"></textarea>
   <div class="vbtns"><div class="vlang" id="vLang"><button class="tab" data-lang="zh-TW" type="button">中文</button><button class="tab" data-lang="en-US" type="button">English</button></div><span class="m" id="vHint"></span><button class="btn" id="vAgain" type="button">Record again</button><button class="btn" id="vStop" type="button">Stop</button><button class="btn primary" id="vSend" type="button">Send to NW2</button></div>
 </div></div>
+<div id="off"><div class="offhint">Tap to wake</div></div>
 <div id="toast"></div>
 <script>
 const API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-dashboard';
@@ -868,7 +876,7 @@ function closeRitual(done) {
   if (done) { const v = derive(data); toast(k === 'morning' ? `Planned · ${plural(v.today_list.length, 'task')} · ${plural(v.sched.filter((x) => x.kind === 'meet').length, 'meeting')}` : `Wrapped up · ${v.counts.done_today ?? 0} done today`, 3500); }
 }
 function maybeRitual() {
-  if (!data || ritual || mode !== 'auto' || document.visibilityState !== 'visible') return;
+  if (!data || ritual || screenOff || mode !== 'auto' || document.visibilityState !== 'visible') return;
   const am = autoMode(), c = chi();
   const kind = am === 'morning' && c.h >= 6 && c.h < 12 ? 'morning' : am === 'evening' && c.h >= 18 ? 'evening' : null;
   if (kind && store.get(`nw2.ritual.${kind}`) !== data.today) openRitual(kind);
@@ -944,6 +952,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.mode) { mode = b.dataset.mode; store.set('nw2.mode', mode); render(); return; }
   if (b.id === 'fs') { toggleFs(); return; }
+  if (b.id === 'off-btn') { setScreenOff(true); return; }
   if (b.id === 'status') { openHealth('health'); return; }
   if (b.id === 'qchip') { openHealth('questions'); return; }
   if (b.id === 'rchip') { openRitual(curMode() === 'morning' ? 'morning' : 'evening'); return; }
@@ -969,15 +978,27 @@ let curT; const hideCursor = () => document.body.classList.add('nocursor');
 document.addEventListener('mousemove', () => { document.body.classList.remove('nocursor'); clearTimeout(curT); curT = setTimeout(hideCursor, 3000); });
 curT = setTimeout(hideCursor, 3000);
 // Keep the screen on while the page is visible.
-async function wake() { try { await navigator.wakeLock?.request('screen'); } catch {} }
+let wakeSentinel = null, screenOff = store.get('nw2.screenoff') === '1';
+async function wake() { if (screenOff) return; try { wakeSentinel = await navigator.wakeLock?.request('screen'); } catch {} }
+async function unwake() { try { await wakeSentinel?.release(); } catch {} wakeSentinel = null; }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); load(); } });
+// Screen off: the page goes black and lets go of the wake lock, so Windows' screen timeout (Ben sets 1 minute) switches the
+// backlight off without leaving full screen. A tap wakes the display (Windows), the next tap brings the board back.
+function setScreenOff(on) {
+  screenOff = on; store.set('nw2.screenoff', on ? '1' : '0');
+  const el = $('off'); el.style.display = on ? 'block' : 'none';
+  if (on) { closeVoice(); closeRitual(false); $('healthPanel').style.display = 'none'; $('toast').style.display = 'none'; el.querySelector('.offhint').style.animation = 'none'; void el.offsetWidth; el.querySelector('.offhint').style.animation = ''; unwake(); }
+  else { wake(); load(); }
+}
+$('off').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); setScreenOff(false); }, true);
+$('off').addEventListener('click', (e) => e.stopPropagation(), true);
 // Full screen (a page cannot minimize its own window: leave full screen, then use the title bar's — button).
 // Inside the shell (index.html) full screen goes on the SHELL's document, so reloading this board keeps it.
 const fsDoc = (() => { try { return window.top.document; } catch { return document; } })();
 const inShell = fsDoc !== document;
 const fsOn = () => !!fsDoc.fullscreenElement;
 async function toggleFs() { try { if (fsOn()) await fsDoc.exitFullscreen(); else await fsDoc.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch {} }
-const fsLabel = () => { $('fs').textContent = fsOn() ? 'Exit full screen' : 'Full screen'; };
+const fsLabel = () => { $('fs').setAttribute('aria-label', fsOn() ? 'Exit full screen' : 'Full screen'); $('fs').classList.toggle('on', fsOn()); };
 fsDoc.addEventListener('fullscreenchange', fsLabel);
 addEventListener('pagehide', () => fsDoc.removeEventListener('fullscreenchange', fsLabel));
 // In the shell: F5 / Ctrl+R reload only this board (full screen stays); Ctrl+Shift+R reloads the whole shell (full screen drops, tap once).
@@ -992,6 +1013,7 @@ document.addEventListener('pointerdown', (e) => { if (!firstTap) return; firstTa
 // Ben 2026-10-27: the Surface start-up script sends one harmless key (F13) after opening the board, so it goes full screen
 // by itself. Any first key except Escape counts; never while the key-entry box is showing.
 document.addEventListener('keydown', (e) => { if (!firstTap || e.key === 'Escape' || $('login').style.display === 'flex') return; firstTap = false; if (!fsOn()) toggleFs(); }, { capture: true });
+if (screenOff) $('off').style.display = 'block';
 wake(); tick(); render(); load(); fsLabel(); setInterval(load, POLL_MS);
 loadWx(); setInterval(loadWx, 30 * 60e3);
 // Once a day (04:00) reload to pick up a new version of this page, but only when there is one
