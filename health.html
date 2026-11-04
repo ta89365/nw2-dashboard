@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>System Health</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<!-- System health detail page (dash-d7, NW2-Lab handoff 2026-11-04). Opened from the board's health panel ("Details");
+     it loads inside the shell's iframe (index.html), so full screen stays. Read-only: no write buttons on this page.
+     Data: GET nw2-dashboard?section=health_detail with the same key the board saved (localStorage nw2.key).
+     "← Back" sits top right (the top-left 0–300 × 0–150 CSS px must stay free of buttons). 3 minutes untouched → back to the board.
+     Change this page in the main repo dashboard/health.html AND the nw2-dashboard repo. -->
+<style>
+:root{--good:#1E8E4E;--bad:#C62828;--amber:#F5B301;--bg:#EEF1F4;--card:#FFFFFF;--ink:#14181F;--sub:#4A5260;--muted:#6B7380;--line:#E3E7ED;--grid:#EDF0F4;--accent:#2457D6;--warn:#B4500B;--badbg:#FDECEC;
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300}
+body.night{--good:#5BC98A;--bad:#FF7A7A;--amber:#FFC93C;--bg:#0F1318;--card:#1A2028;--ink:#E8ECF1;--sub:#9AA5B3;--muted:#7F8A98;--line:#2A323D;--grid:#232A33;--accent:#8FB0FF;--warn:#F0A35E;--badbg:#3A1C1C;
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans TC',system-ui,sans-serif;overflow-y:auto;overflow-x:hidden;-webkit-user-select:none;user-select:none;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+button{font-family:inherit;cursor:pointer}
+.num{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
+#app{min-height:100vh;display:flex;flex-direction:column;padding:28px 40px 32px;gap:18px;max-width:1800px;margin:0 auto}
+header{display:flex;align-items:center;gap:20px}
+header h1{margin:0;font-size:30px;font-weight:700;flex:1}
+.clock{font-size:22px;color:var(--sub)}
+.back{height:52px;padding:0 24px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px;font-weight:700}
+.back:active{transform:scale(.96)}
+.status{font-size:17px;line-height:1.5;color:var(--sub);background:var(--card);border-radius:16px;padding:14px 20px}
+.status b{color:var(--ink);font-weight:700}
+.status .over{color:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.card{background:var(--card);border-radius:20px;padding:20px 22px;min-width:0}
+.card h2{margin:0 0 10px;font-size:19px;font-weight:700;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.card h2 small{font-size:13.5px;font-weight:400;color:var(--sub)}
+.tile .lab{font-size:15px;color:var(--sub);font-weight:500}
+.tile .big{font-size:44px;font-weight:600;line-height:1.1;margin:6px 0 6px}
+.tile .big.over,.tile .note.over{color:var(--bad)}
+.tile .note{font-size:13.5px;color:var(--sub);line-height:1.45}
+.dots{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
+.dot{width:24px;height:24px;border-radius:6px;font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:700;border:1px solid var(--line);color:var(--sub)}
+.dot.pass{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good);border-color:transparent}
+.dot.fail{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border-color:transparent}
+.dot.over{background:color-mix(in srgb,var(--amber) 22%,transparent);color:var(--warn);border-color:transparent}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13.5px;color:var(--sub);margin:0 0 6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend .ln{width:18px;height:0;border-top:2px dashed var(--sub);border-radius:0;vertical-align:3px}
+.legend .ln.solid{border-top-style:solid}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart text{fill:var(--muted);font-size:12px;font-family:'Space Grotesk',sans-serif}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 14px;font-size:14px;line-height:1.5;min-width:170px;display:none;z-index:2;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.tip .r{display:flex;justify-content:space-between;gap:16px}
+.tip .r i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.tip .tot{border-top:1px solid color-mix(in srgb,var(--bg) 30%,transparent);margin-top:4px;padding-top:4px;font-weight:700}
+.runs{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+.scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th{position:sticky;top:0;background:var(--card);text-align:left;font-weight:500;color:var(--sub);font-size:13px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
+td.n,th.n{text-align:right;font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.nw{white-space:nowrap}
+td.over{color:var(--bad);font-weight:600}
+tr.open td{background:var(--badbg)}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
+.pill.open{background:var(--bad);color:#fff}
+.pill.res{background:color-mix(in srgb,var(--sub) 18%,transparent);color:var(--sub)}
+.pill.err{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent)}
+.pill.ok{color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)}
+.empty{color:var(--sub);font-size:15px;padding:12px 0}
+.miss{color:var(--sub);font-size:15px;padding:10px 0}
+#msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:var(--bg);font-size:19px;color:var(--sub);text-align:center;padding:40px}
+/* phones / narrow */
+@media (max-width:900px){
+  #app{padding:20px 16px 24px}
+  header h1{font-size:24px}
+  .clock{display:none}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .runs{grid-template-columns:1fr}
+  .tile .big{font-size:34px}
+}
+@media (max-width:480px){ .tiles{grid-template-columns:1fr} }
+/* tall portrait monitor */
+@media (min-aspect-ratio:1/1) and (min-width:1800px){ #app{padding:36px 56px} .tile .big{font-size:56px} table{font-size:16px} }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><h1>System Health</h1><span class="clock num" id="clock"></span><button class="back" id="back" type="button">← Back</button></header>
+  <div class="status" id="status">Loading…</div>
+  <div class="tiles" id="tiles"></div>
+  <section class="card"><h2>Daily spend by program <small>Last 30 days · tap a day for the breakdown</small></h2><div class="legend" id="spendLegend"></div><div class="chart" id="spendChart"></div></section>
+  <section class="card"><h2>Screen agent runs <small>Last 21 days · live runs</small></h2>
+    <div class="runs"><div><div class="legend" id="runLegend"></div><div class="chart" id="runChart"></div></div><div class="scroll" id="runTable" style="max-height:360px"></div></div></section>
+  <section class="card"><h2>Health alerts <small id="alertSub"></small></h2><div class="scroll" id="alerts" style="max-height:380px"></div></section>
+  <section class="card"><h2>Screen agent failure types <small id="failSub"></small></h2><div class="scroll" id="failures" style="max-height:420px"></div></section>
+</div>
+<div id="msg"><div id="msgText"></div><button class="back" type="button" data-back>← Back to the board</button></div>
+<script>
+const API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-dashboard';
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } } };
+const key = store.get('nw2.key');
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const int = (n) => Number(n ?? 0).toLocaleString('en-US');
+const md = (ymd) => ymd ? `${+ymd.slice(5, 7)}/${+ymd.slice(8, 10)}` : '';
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const wdOf = (ymd) => WD[new Date(ymd + 'T12:00:00Z').getUTCDay()];
+const addDays = (ymd, n) => new Date(Date.parse(ymd + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const chi = () => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',weekday:'short'}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return { h: +p.hour % 24, m: +p.minute, wd: WD.indexOf(p.weekday), ymd: `${p.year}-${p.month}-${p.day}`, hm: `${String(+p.hour % 24).padStart(2,'0')}:${p.minute}` };
+};
+// Same mode rules as the board (dark only in Evening).
+const autoMode = () => { const { h, wd } = chi(); if (h >= 18 || h < 6) return 'evening'; if (h < 9 || wd === 0 || wd === 6) return 'morning'; return 'work'; };
+const curMode = () => { const m = store.get('nw2.mode') || 'auto'; return m === 'auto' ? autoMode() : m; };
+const COMPS = ['Judge', 'Writer', 'Auto-complete', 'Audit', 'Screen agent', 'Learn']; // fixed order = palette slots 1–6
+const compColor = (c) => `var(--s${COMPS.indexOf(c) + 1})`;
+
+// Navigation stays inside the shell's iframe (the shell keeps full screen). Keep ?view= etc.
+const goBoard = () => { const q = new URLSearchParams(location.search); q.delete('v'); const s = q.toString(); location.href = 'board.html' + (s ? '?' + s : ''); };
+document.addEventListener('click', (e) => { if (e.target.closest('#back, [data-back]')) goBoard(); });
+// 3 minutes untouched → back to the board.
+let idle;
+const poke = () => { clearTimeout(idle); idle = setTimeout(goBoard, 3 * 60e3); };
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) => addEventListener(ev, poke, { passive: true, capture: true }));
+addEventListener('scroll', poke, { passive: true, capture: true });
+poke();
+// In the shell: F5 / Ctrl+R reload only this page (full screen stays); Ctrl+Shift+R reloads the shell.
+const inShell = (() => { try { return window.top !== window && !!window.top.document; } catch { return false; } })();
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'Backspace') { goBoard(); return; }
+  if (!inShell || (e.key !== 'F5' && !(e.ctrlKey && (e.key === 'r' || e.key === 'R')))) return;
+  e.preventDefault();
+  if (e.shiftKey) window.top.location.reload(); else location.reload();
+}, { capture: true });
+
+const tick = () => { const c = chi(); $('clock').textContent = c.hm; document.body.classList.toggle('night', curMode() === 'evening'); };
+tick(); setInterval(tick, 15e3);
+
+let data = null;
+async function load() {
+  if (!key) { showMsg('Open the board once to enter the key, then come back here.'); return; }
+  try {
+    const r = await fetch(API + '?section=health_detail', { headers: { 'x-nw2-dash': key }, cache: 'no-store' });
+    if (r.status === 401) { showMsg('The saved key was not accepted. Go back to the board and enter it again.'); return; }
+    if (!r.ok) throw new Error(r.status);
+    data = await r.json(); $('msg').style.display = 'none'; render();
+  } catch { if (!data) showMsg("Can't reach NW2 right now. It'll retry in a minute."); setTimeout(load, 60e3); }
+}
+function showMsg(t) { $('msgText').textContent = t; $('msg').style.display = 'flex'; }
+
+function render() {
+  const d = data, m = d.month, a = d.acceptance;
+  const openN = d.alerts ? d.alerts.filter((x) => x.state === 'Open').length : null;
+  const over = m && m.projected_usd > m.cap_usd;
+  // 1. Status line
+  const parts = [];
+  if (openN != null) parts.push(`<b>${int(openN)}</b> open alert${openN === 1 ? '' : 's'}`);
+  if (m) parts.push(`This month <b>${usd(m.spent_usd)}</b> of ${usd(m.cap_usd)}`,
+    `On pace for <b class="${over ? 'over' : ''}">${usd(m.projected_usd)}</b>${m.cap_hit_day ? ` <span class="over">(hits cap on ${md(m.cap_hit_day)})</span>` : ''}`);
+  if (a) parts.push(`7:45 acceptance <b>${a.pass_pct == null ? '—' : a.pass_pct + '%'}</b> (target ${a.target_pct}%)${a.final ? ' · final' : ''}`);
+  $('status').innerHTML = parts.join(' · ') || 'No data';
+  // 2. Tiles
+  const tile = (lab, big, note, cls = '') => `<div class="card tile"><div class="lab">${lab}</div><div class="big num ${cls}">${big}</div><div class="note ${cls}">${note}</div></div>`;
+  const dots = a ? `<div class="dots">${a.by_day.map((x) => {
+    const c = x.status === 'missed_dst' ? '' : x.status === 'pending' ? '' : x.passed ? 'pass' : x.status === 'done' ? 'over' : 'fail';
+    const s = x.status === 'missed_dst' ? '–' : x.status === 'pending' ? '·' : x.passed ? '✓' : x.status === 'done' ? '$' : '✕';
+    const t = x.status === 'missed_dst' ? 'DST miss (not counted)' : x.status === 'pending' ? 'Not run yet' : x.status === 'missed' ? 'Did not run' : `${x.status} · ${usd(x.cost_usd)}`;
+    return `<span class="dot ${c}" title="${md(x.day)} ${esc(t)}">${s}</span>`; }).join('')}</div><div class="note" style="margin-top:4px">✓ passed · $ done but over $1 · ✕ failed · – DST</div>` : '';
+  $('tiles').innerHTML =
+    tile('Open alerts', openN == null ? '—' : int(openN), openN ? 'Newest first in Health alerts below' : 'Nothing open', openN ? 'over' : '') +
+    (m ? tile('Spent this month', usd(m.spent_usd), `Cap ${usd(m.cap_usd)} · ${usd(m.per_day_usd)}/day average`) : tile('Spent this month', '—', "Couldn't read")) +
+    (m ? tile('Projected month-end', usd(m.projected_usd), over ? `Over the ${usd(m.cap_usd)} cap · hits cap on ${md(m.cap_hit_day)}` : `Under the ${usd(m.cap_usd)} cap`, over ? 'over' : '') : tile('Projected month-end', '—', "Couldn't read")) +
+    (a ? tile('7:45 acceptance', a.pass_pct == null ? '—' : a.pass_pct + '%',
+      `Passed = done and ≤ $1 · target ${a.target_pct}%<br>Ran ${int(a.ran)} · Done ${int(a.done)} · Passed ${int(a.passed)}${a.missed_other ? ` · Missed ${int(a.missed_other)}` : ''}${a.pending ? ' · today pending' : ''}<br>${a.missed_dst ? '11/01 DST miss not counted · ' : ''}${md(a.from)}–${md(a.to)}${a.final ? ' · final' : ''}${dots}`)
+      : tile('7:45 acceptance', '—', "Couldn't read"));
+  spendChart(); runChart(); runTable(); alertsTable(); failuresTable();
+}
+
+// ── charts (hand-drawn SVG; thin bars, 4px rounded tops, 2px gaps between stacked segments)
+const tip = (host) => { let t = host.querySelector('.tip'); if (!t) { t = document.createElement('div'); t.className = 'tip'; host.appendChild(t); } return t; };
+function placeTip(host, t, x, y) {
+  t.style.display = 'block';
+  const w = t.offsetWidth, W = host.clientWidth;
+  t.style.left = Math.max(0, Math.min(W - w, x - w / 2)) + 'px';
+  t.style.top = Math.max(-10, y - t.offsetHeight - 12) + 'px';
+}
+const STEPS = { 1: 5, 1.5: 3, 2: 4, 2.5: 5, 3: 3, 4: 4, 5: 5, 6: 3, 8: 4, 10: 5 }; // ticks land on round numbers
+const stepsFor = (max) => STEPS[+(max / Math.pow(10, Math.floor(Math.log10(max)))).toFixed(1)] ?? 4;
+const money = (v) => '$' + (Number.isInteger(Math.round(v * 100) / 100) ? Math.round(v) : (Math.round(v * 100) / 100).toFixed(2).replace(/0$/, ''));
+const niceMax = (v) => { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k * p >= v) return k * p; return 10 * p; };
+function axis(svg, W, H, L, B, T, max, steps, fmt) {
+  let s = '';
+  for (let i = 0; i <= steps; i++) {
+    const v = max * i / steps, y = H - B - (H - B - T) * i / steps;
+    s += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${L - 8}" y="${y + 4}" text-anchor="end">${fmt(v)}</text>`;
+  }
+  return s;
+}
+function barPath(x, y0, w, h, round) { // rounded top corners only when round
+  if (h <= 0) return '';
+  const r = round ? Math.min(4, w / 2, h) : 0;
+  return `M${x},${y0}V${y0 - h + r}${r ? `Q${x},${y0 - h} ${x + r},${y0 - h}` : ''}H${x + w - r}${r ? `Q${x + w},${y0 - h} ${x + w},${y0 - h + r}` : ''}V${y0}Z`;
+}
+function spendChart() {
+  const host = $('spendChart'), rows = data.spend_daily, m = data.month;
+  $('spendLegend').innerHTML = COMPS.map((c) => `<span><i style="background:${compColor(c)}"></i>${c}</span>`).join('') +
+    (m ? `<span><i class="ln"></i>Cap ÷ ${m.days_in_month} days = ${usd(m.cap_usd / m.days_in_month)}/day</span>` : '');
+  if (!rows) { host.innerHTML = '<div class="miss">Couldn\'t read spending right now.</div>'; return; }
+  const end = chi().ymd, days = Array.from({ length: 30 }, (_, i) => addDays(end, i - 29));
+  const by = Object.fromEntries(days.map((d) => [d, {}]));
+  rows.forEach((r) => { if (by[r.day]) by[r.day][r.component] = (by[r.day][r.component] ?? 0) + r.usd; });
+  const tot = (d) => COMPS.reduce((s, c) => s + (by[d][c] ?? 0), 0);
+  const daily = m ? m.cap_usd / m.days_in_month : 0;
+  const W = Math.max(320, host.clientWidth), H = W < 600 ? 220 : 260, L = 46, B = 26, T = 8;
+  const max = niceMax(Math.max(daily * 1.15, ...days.map(tot)));
+  const slot = (W - L) / days.length, bw = Math.max(4, Math.min(22, slot * 0.62));
+  const ys = (v) => (H - B - T) * v / max;
+  let s = axis(null, W, H, L, B, T, max, stepsFor(max), money);
+  days.forEach((d, i) => {
+    const x = L + slot * i + (slot - bw) / 2;
+    let y0 = H - B; const segs = COMPS.filter((c) => by[d][c] > 0);
+    segs.forEach((c, j) => {
+      const h = ys(by[d][c]), top = j === segs.length - 1;
+      const hh = Math.max(top ? h : h - 2, 0.8); // 2px surface gap between stacked segments
+      s += `<path d="${barPath(x, y0, bw, hh, top)}" fill="${compColor(c)}"/>`;
+      y0 -= h;
+    });
+    const k = W < 700 ? 7 : 3, last = days.length - 1;
+    const lab = i === last || (i % k === 0 && last - i >= k * 0.7) ? md(d) : '';
+    if (lab) s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${lab}</text>`;
+    s += `<rect class="hit" data-i="${i}" x="${L + slot * i}" y="${T}" width="${slot}" height="${H - B - T}" fill="transparent"/>`;
+  });
+  if (daily) { const y = H - B - ys(daily); s += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--sub)" stroke-width="2" stroke-dasharray="6 5" pointer-events="none"/>`; }
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Daily AI spend by program, last 30 days">${s}</svg>`;
+  const show = (e) => {
+    const r = e.target.closest('.hit'); if (!r) return;
+    const d = days[+r.dataset.i], t = tip(host);
+    const lines = COMPS.filter((c) => by[d][c] > 0).map((c) => `<div class="r"><span><i style="background:${compColor(c)}"></i>${c}</span><span class="num">${usd(by[d][c])}</span></div>`).join('');
+    t.innerHTML = `<div><b>${wdOf(d)} ${md(d)}</b></div>${lines || '<div>No spend</div>'}<div class="r tot"><span>Total</span><span class="num">${usd(tot(d))}</span></div>`;
+    const bx = +r.getAttribute('x') + slot / 2, rect = host.getBoundingClientRect();
+    placeTip(host, t, bx * rect.width / W, (H - B - ys(tot(d))) * rect.height / H);
+  };
+  host.onpointerdown = show; host.onpointermove = (e) => { if (e.pointerType === 'mouse' || e.buttons) show(e); };
+  host.onpointerleave = (e) => { if (e.pointerType === 'mouse') tip(host).style.display = 'none'; };
+}
+function runChart() {
+  const host = $('runChart'), runs = data.agent_runs;
+  $('runLegend').innerHTML = `<span><i style="background:var(--s1)"></i>Full</span><span><i style="background:var(--s2)"></i>Targeted</span><span><i style="background:var(--bad)"></i>Error</span><span><i class="ln solid"></i>$1 limit</span>`;
+  if (!runs) { host.innerHTML = '<div class="miss">Couldn\'t read runs right now.</div>'; return; }
+  if (!runs.length) { host.innerHTML = '<div class="empty">No live runs in the last 21 days</div>'; return; }
+  const list = runs.slice().reverse(); // oldest → newest left to right
+  const W = Math.max(300, host.clientWidth), H = W < 600 ? 220 : 260, L = 46, B = 26, T = 8;
+  const max = niceMax(Math.max(1.2, ...list.map((r) => r.cost_usd)));
+  const slot = (W - L) / Math.max(list.length, 10), bw = Math.max(6, Math.min(24, slot * 0.6));
+  const ys = (v) => (H - B - T) * v / max;
+  let s = axis(null, W, H, L, B, T, max, stepsFor(max), money);
+  let lastDay = '';
+  list.forEach((r, i) => {
+    const x = L + slot * i + (slot - bw) / 2;
+    const fill = /error|abort/.test(r.status) ? 'var(--bad)' : r.scope === 'full' ? 'var(--s1)' : 'var(--s2)';
+    s += `<path d="${barPath(x, H - B, bw, Math.max(ys(r.cost_usd), 1), true)}" fill="${fill}"/>`;
+    if (r.day !== lastDay && (i % 2 === 0 || list.length < 12)) { s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${md(r.day)}</text>`; lastDay = r.day; }
+    s += `<rect class="hit" data-i="${i}" x="${L + slot * i}" y="${T}" width="${slot}" height="${H - B - T}" fill="transparent"/>`;
+  });
+  const y1 = H - B - ys(1);
+  s += `<line x1="${L}" x2="${W}" y1="${y1}" y2="${y1}" stroke="var(--sub)" stroke-width="2" pointer-events="none"/>`;
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Screen agent run cost, last 21 days">${s}</svg>`;
+  const show = (e) => {
+    const h = e.target.closest('.hit'); if (!h) return;
+    const r = list[+h.dataset.i], t = tip(host);
+    t.innerHTML = `<div><b>Run ${r.run_id}</b> · ${wdOf(r.day)} ${md(r.day)} ${r.at_local}</div><div class="r"><span>${esc(cap(r.scope))} · ${esc(cap(r.status))}</span><span class="num">${int(r.steps)} steps</span></div><div class="r tot"><span>Cost</span><span class="num">${usd(r.cost_usd)}</span></div>`;
+    const rect = host.getBoundingClientRect(), bx = +h.getAttribute('x') + slot / 2;
+    placeTip(host, t, bx * rect.width / W, (H - B - ys(r.cost_usd)) * rect.height / H);
+  };
+  host.onpointerdown = show; host.onpointermove = (e) => { if (e.pointerType === 'mouse' || e.buttons) show(e); };
+  host.onpointerleave = (e) => { if (e.pointerType === 'mouse') tip(host).style.display = 'none'; };
+}
+const cap = (s) => String(s ?? '').charAt(0).toUpperCase() + String(s ?? '').slice(1);
+document.addEventListener('pointerdown', (e) => { document.querySelectorAll('.chart').forEach((c) => { if (!c.contains(e.target)) { const t = c.querySelector('.tip'); if (t) t.style.display = 'none'; } }); });
+
+// ── tables
+function runTable() {
+  const runs = data.agent_runs;
+  if (!runs) { $('runTable').innerHTML = '<div class="miss">Couldn\'t read runs right now.</div>'; return; }
+  $('runTable').innerHTML = `<table><thead><tr><th class="n">Run</th><th>Date</th><th>Time</th><th>Scope</th><th>Result</th><th class="n">Steps</th><th class="n">Cost</th></tr></thead><tbody>${
+    runs.map((r) => `<tr><td class="n">${r.run_id}</td><td class="nw">${wdOf(r.day)} ${md(r.day)}</td><td class="n" style="text-align:left">${esc(r.at_local)}</td><td>${esc(cap(r.scope))}</td><td><span class="pill ${/error|abort/.test(r.status) ? 'err' : r.status === 'done' ? 'ok' : 'res'}">${esc(cap(r.status))}</span></td><td class="n">${int(r.steps)}</td><td class="n ${r.cost_usd > 1 ? 'over' : ''}">${usd(r.cost_usd)}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+function alertsTable() {
+  const al = data.alerts;
+  if (!al) { $('alerts').innerHTML = '<div class="miss">Couldn\'t read alerts right now.</div>'; $('alertSub').textContent = ''; return; }
+  const open = al.filter((x) => x.state === 'Open').length;
+  $('alertSub').textContent = `${int(open)} open · resolved in the last 14 days below`;
+  $('alerts').innerHTML = al.length ? `<table><thead><tr><th>When</th><th>State</th><th>Item</th><th>Detail</th><th>Source</th></tr></thead><tbody>${
+    al.map((x) => `<tr class="${x.state === 'Open' ? 'open' : ''}"><td class="n" style="text-align:left">${esc(x.at_local)}</td><td><span class="pill ${x.state === 'Open' ? 'open' : 'res'}">${x.state}</span></td><td style="min-width:140px;font-weight:500">${esc(x.item)}</td><td style="color:var(--sub)">${esc(x.detail)}</td><td class="nw" style="color:var(--sub)">${esc(x.source)}</td></tr>`).join('')
+  }</tbody></table>` : '<div class="empty">No alerts in the last 14 days</div>';
+}
+function failuresTable() {
+  const f = data.failures;
+  if (!f) { $('failures').innerHTML = '<div class="miss">Couldn\'t read the list right now.</div>'; return; }
+  $('failSub').textContent = `Copied from docs (as of ${md(f.as_of)})`;
+  $('failures').innerHTML = `<table><thead><tr><th class="n">#</th><th>Type</th><th>Runs</th><th>State</th><th>Fix</th></tr></thead><tbody>${
+    f.rows.map((r) => `<tr><td class="n">${r.no}</td><td style="font-weight:500;min-width:200px">${esc(r.type)}</td><td style="color:var(--sub)">${esc(r.runs)}</td><td class="nw">${esc(r.state)}</td><td style="color:var(--sub)">${esc(r.fix)}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => data && render(), 150); });
+load(); setInterval(load, 5 * 60e3);
+</script>
+</body>
+</html>

@@ -120,6 +120,7 @@ body[data-layout="narrow"] .stats>*,body[data-layout="tall"] .stats>*{display:no
 button.stat{background:none;border-top:none;border-right:none;border-bottom:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 button.stat:first-child{border-left:none}
 button.stat .l{text-decoration:underline dotted;text-underline-offset:3px}
+.detailsRow{display:flex;align-items:center;gap:14px;padding-top:12px;border-top:1px solid var(--line)}
 .defn{font-size:14px;color:var(--sub);padding:0 0 10px}
 /* evening: tomorrow + coming up */
 .dayrow{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
@@ -941,7 +942,7 @@ function openHealth(kind = panelKind) {
       + (v.overdue.length ? hintBar() + v.overdue.map((t) => ROWS.both(t)).join('') : '<div class="empty">Nothing overdue</div>')
     : kind === 'questions'
     ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
-    : BLOCKS.health(v);
+    : BLOCKS.health(v) + '<div class="detailsRow"><button class="btn primary" id="healthDetails" type="button">Details</button><span class="m">Spending, 7:45 acceptance, run history, alerts</span></div>';
   $('healthPanel').style.display = 'flex';
 }
 $('healthPanel').addEventListener('click', (e) => { if (e.target.id === 'healthPanel') $('healthPanel').style.display = 'none'; });
@@ -965,6 +966,8 @@ document.addEventListener('click', (e) => {
   if (b.id === 'rClose') { closeRitual(false); return; }
   if (b.id === 'rDone') { closeRitual(true); return; }
   if (b.id === 'odbtn') { openHealth('overdue'); return; }
+  // dash-d7: the health detail page opens inside the same iframe (the shell keeps full screen); ?view= etc. carry over.
+  if (b.id === 'healthDetails') { const q = new URLSearchParams(location.search); q.delete('v'); location.href = 'health.html' + (q.toString() ? '?' + q : ''); return; }
   if (b.id === 'healthClose') { $('healthPanel').style.display = 'none'; return; }
   if (b.id === 'refresh') { act('refresh'); setTimeout(load, 8000); return; }
   if (b.dataset.undo) { undoAct(b.dataset.undo); $('toast').style.display = 'none'; return; }
