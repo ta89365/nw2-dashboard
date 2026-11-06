@@ -279,6 +279,10 @@ body.night #toast button{color:#2457D6}
 .tab.ic{width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .tab.ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Ben 2026-11-06: while the screen is off the board rests (nothing painted or animated behind the black page, no polling) so the
+   Surface runs cooler — its display started failing when warm. */
+body.resting #app{visibility:hidden}
+body.resting #app *{animation-play-state:paused!important}
 </style>
 </head>
 <body>
@@ -733,7 +737,7 @@ function tick() {
   }
 }
 let lastMode = null;
-setInterval(() => { tick(); const m = curMode(); if (m !== lastMode) { lastMode = m; render(); } }, 10_000);
+setInterval(() => { if (screenOff) return; tick(); const m = curMode(); if (m !== lastMode) { lastMode = m; render(); } }, 10_000);
 
 async function load() {
   if (!key) return showLogin();
@@ -982,6 +986,14 @@ document.addEventListener('mousemove', () => { document.body.classList.remove('n
 curT = setTimeout(hideCursor, 3000);
 // Keep the screen on while the page is visible.
 let wakeSentinel = null, screenOff = store.get('nw2.screenoff') === '1';
+// Ben 2026-11-06: the Surface shuts down at 04:00 every night (surface/NW2 Nightly Shutdown.cmd). A screen-off from before
+// the last 05:00 Houston time does not carry over to the morning start-up: the board comes up awake. (The 04:00 version
+// reload is before 05:00, so it still stays black.)
+if (screenOff) {
+  const at = Number(store.get('nw2.screenoff.at') || 0), c = chi();
+  const last5 = Date.now() - (((c.h - 5 + 24) % 24) * 60 + c.m) * 60e3; // the most recent 05:00 (Houston)
+  if (at < last5) { screenOff = false; store.set('nw2.screenoff', '0'); }
+}
 async function wake() { if (screenOff) return; try { wakeSentinel = await navigator.wakeLock?.request('screen'); } catch {} }
 async function unwake() { try { await wakeSentinel?.release(); } catch {} wakeSentinel = null; }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); load(); } });
@@ -993,14 +1005,19 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // button wakes to the sign-in screen. Waking the board opens nw2screen:on, which puts the old brightness back.
 // Where the protocol isn't registered nothing happens.
 function setScreenOff(on) {
-  screenOff = on; store.set('nw2.screenoff', on ? '1' : '0');
+  screenOff = on; store.set('nw2.screenoff', on ? '1' : '0'); if (on) store.set('nw2.screenoff.at', String(Date.now()));
   const el = $('off'); el.style.display = on ? 'block' : 'none';
+  document.body.classList.toggle('resting', on);
   if (on) {
     closeVoice(); closeRitual(false); $('healthPanel').style.display = 'none'; $('toast').style.display = 'none';
     el.querySelector('.offhint').style.animation = 'none'; void el.offsetWidth; el.querySelector('.offhint').style.animation = '';
     unwake();
     setTimeout(() => { try { location.assign('nw2screen:off'); } catch {} }, 600);
-  } else { wake(); load(); try { location.assign('nw2screen:on'); } catch {} }
+  } else {
+    wake(); tick(); lastMode = curMode(); render(); load();
+    if (Date.now() - wxAt > 30 * 60e3) loadWxNow();
+    try { location.assign('nw2screen:on'); } catch {}
+  }
 }
 $('off').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); setScreenOff(false); }, true);
 $('off').addEventListener('click', (e) => e.stopPropagation(), true);
@@ -1025,9 +1042,12 @@ document.addEventListener('pointerdown', (e) => { if (!firstTap) return; firstTa
 // Ben 2026-10-27: the Surface start-up script sends one harmless key (F13) after opening the board, so it goes full screen
 // by itself. Any first key except Escape counts; never while the key-entry box is showing.
 document.addEventListener('keydown', (e) => { if (!firstTap || e.key === 'Escape' || $('login').style.display === 'flex') return; firstTap = false; if (!fsOn()) toggleFs(); }, { capture: true });
-if (screenOff) $('off').style.display = 'block';
-wake(); tick(); render(); load(); fsLabel(); setInterval(load, POLL_MS);
-loadWx(); setInterval(loadWx, 30 * 60e3);
+if (screenOff) { $('off').style.display = 'block'; document.body.classList.add('resting'); }
+// While the screen is off nothing is fetched; waking catches up at once (setScreenOff(false)).
+let wxAt = 0;
+wake(); tick(); render(); load(); fsLabel(); setInterval(() => { if (!screenOff) load(); }, POLL_MS);
+const loadWxNow = () => { wxAt = Date.now(); loadWx(); };
+loadWxNow(); setInterval(() => { if (!screenOff) loadWxNow(); }, 30 * 60e3);
 // Once a day (04:00) reload to pick up a new version of this page, but only when there is one
 // (compares the HTML on the server with the copy fetched at start-up; inside the shell only this board reloads).
 let selfHtml = null;
