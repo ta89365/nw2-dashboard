@@ -100,6 +100,11 @@ body.night .who{background:#24364F;color:#C3D4FF}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 22px;border-radius:12px;font-size:16px;display:none}
 /* ── Reminders (dash-d3 notices) + weather ── */
 .qchip b{font-family:'Space Grotesk',sans-serif}
+/* Surface battery (dash-d8, Ben 2026-11-06): quiet while plugged in, amber / red when running on battery */
+.bchip{cursor:default;color:var(--sub);display:inline-flex;align-items:center;gap:6px;font-family:'Space Grotesk',sans-serif}
+.bchip svg{width:22px;height:12px;flex:none}
+.bchip.on-bat{color:var(--warn);font-weight:700;border-color:var(--warn)}
+.bchip.low{color:var(--bad);border-color:var(--bad)}
 .chips{display:flex;gap:8px}
 .grid3a{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,5fr) minmax(0,4fr);grid-template-rows:minmax(0,1fr);gap:18px;height:100%;min-height:0}
 .stack>.card{flex:1 1 0;min-height:0}
@@ -301,7 +306,7 @@ body.resting #app *{animation-play-state:paused!important}
         <button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         <button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button>
       </nav>
-      <div class="chips"><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
+      <div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
     </div>
   </header>
   <main id="main"></main>
@@ -739,10 +744,29 @@ function tick() {
 let lastMode = null;
 setInterval(() => { if (screenOff) return; tick(); const m = curMode(); if (m !== lastMode) { lastMode = m; render(); } }, 10_000);
 
+// ── Battery (dash-d8): the Battery Status API on the Surface. Sent with each fetch (?bat=&ac=) so the health panel and the
+// other NW2 chats can see it. A desktop with no battery reports 100% / charging / never discharging → treated as none.
+let batt = null;
+const battInfo = () => {
+  if (!batt) return null;
+  if (batt.level === 1 && batt.charging && batt.chargingTime === 0 && batt.dischargingTime === Infinity) return null;
+  return { pct: Math.round(batt.level * 100), ac: !!batt.charging };
+};
+function renderBatt() {
+  const b = battInfo(), el = $('bchip');
+  if (!b) { el.style.display = 'none'; return; }
+  const w = Math.max(1, Math.round(14 * b.pct / 100));
+  const icon = `<svg viewBox="0 0 22 12" aria-hidden="true"><rect x="0.75" y="0.75" width="18" height="10.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="19.5" y="4" width="2" height="4" rx="1" fill="currentColor"/><rect x="2.75" y="2.75" width="${w}" height="6.5" rx="1" fill="currentColor"/></svg>`;
+  el.innerHTML = `${icon}${b.pct}%${b.ac ? (b.pct < 45 ? ' · Charging' : ' · Plugged in') : ' · On battery'}`;
+  el.className = 'hchip bchip' + (b.ac ? '' : b.pct < 25 ? ' on-bat low' : ' on-bat');
+  el.style.display = '';
+}
+try { navigator.getBattery?.().then((b) => { batt = b; const on = () => { renderBatt(); if (!screenOff) load(); }; b.addEventListener('chargingchange', on); b.addEventListener('levelchange', renderBatt); renderBatt(); load(); }).catch(() => {}); } catch {}
 async function load() {
   if (!key) return showLogin();
   try {
-    const r = await fetch(API, { headers: { 'x-nw2-dash': key }, cache: 'no-store' });
+    const b = battInfo();
+    const r = await fetch(b ? `${API}?bat=${b.pct}&ac=${b.ac ? 1 : 0}` : API, { headers: { 'x-nw2-dash': key }, cache: 'no-store' });
     if (r.status === 401) { key = null; return showLogin('That key didn\'t work. Please try again.'); }
     if (!r.ok) throw new Error(r.status);
     const fresh = await r.json();
