@@ -105,6 +105,9 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .bchip svg{width:22px;height:12px;flex:none}
 .bchip.on-bat{color:var(--warn);font-weight:700;border-color:var(--warn)}
 .bchip.low{color:var(--bad);border-color:var(--bad)}
+.bchip.charging{color:var(--good);font-weight:700;border-color:var(--good)}
+.bchip.charging .bolt{animation:boltPulse 2.4s ease-in-out infinite}
+@keyframes boltPulse{0%,100%{opacity:1}50%{opacity:.35}}
 .chips{display:flex;gap:8px}
 .grid3a{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,5fr) minmax(0,4fr);grid-template-rows:minmax(0,1fr);gap:18px;height:100%;min-height:0}
 .stack>.card{flex:1 1 0;min-height:0}
@@ -757,8 +760,11 @@ function renderBatt() {
   if (!b) { el.style.display = 'none'; return; }
   const w = Math.max(1, Math.round(14 * b.pct / 100));
   const icon = `<svg viewBox="0 0 22 12" aria-hidden="true"><rect x="0.75" y="0.75" width="18" height="10.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="19.5" y="4" width="2" height="4" rx="1" fill="currentColor"/><rect x="2.75" y="2.75" width="${w}" height="6.5" rx="1" fill="currentColor"/></svg>`;
-  el.innerHTML = `${icon}${b.pct}%${b.ac ? (b.pct < 45 ? ' · Charging' : ' · Plugged in') : ' · On battery'}`;
-  el.className = 'hchip bchip' + (b.ac ? '' : b.pct < 25 ? ' on-bat low' : ' on-bat');
+  // Ben 2026-11-06: charging gets its own colour (green + a pulsing bolt); at the 50% UEFI limit it is just "Plugged in" (grey).
+  const charging = b.ac && b.pct < 45;
+  const bolt = charging ? '<svg class="bolt" viewBox="0 0 10 14" style="width:9px;height:13px" aria-hidden="true"><path d="M6 0 0 8h4l-1 6 6-8H5z" fill="currentColor"/></svg>' : '';
+  el.innerHTML = `${icon}${bolt}${b.pct}%${b.ac ? (charging ? ' · Charging' : ' · Plugged in') : ' · On battery'}`;
+  el.className = 'hchip bchip' + (b.ac ? (charging ? ' charging' : '') : b.pct < 25 ? ' on-bat low' : ' on-bat');
   el.style.display = '';
 }
 try { navigator.getBattery?.().then((b) => { batt = b; const on = () => { renderBatt(); if (!screenOff) load(); }; b.addEventListener('chargingchange', on); b.addEventListener('levelchange', renderBatt); renderBatt(); load(); }).catch(() => {}); } catch {}
