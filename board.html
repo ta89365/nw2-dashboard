@@ -112,8 +112,8 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .grid3a{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,5fr) minmax(0,4fr);grid-template-rows:minmax(0,1fr);gap:18px;height:100%;min-height:0}
 .stack>.card{flex:1 1 0;min-height:0}
 .stack>.fixed{flex:none}
-/* header stats (Ben 2026-10-28) */
-.stats{flex:1;display:flex;justify-content:center;align-items:flex-end;padding:0 0 2px 12px;min-width:0}
+/* header stats (Ben 2026-10-28); sizes and spacing now set by header v3 (.hC) below */
+.stats{flex:1;display:flex;justify-content:center;align-items:flex-end;padding:0;min-width:0}
 .stat{padding:2px 9px;border-left:1px solid var(--line);min-width:min-content}
 .stat:first-child{border-left:none}
 .stat .v{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:600;line-height:1;letter-spacing:-.5px}
@@ -122,21 +122,18 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .stat.bad .v{color:var(--bad)}
 .stat.good .v{color:var(--good)}
 .stat.zero .v{color:var(--sub)}
+/* phone / portrait: no room for the KPI strip — keep only a one-line budget note; the utility bar wraps */
 body[data-layout="narrow"] .stats>*,body[data-layout="tall"] .stats>*{display:none}
-/* AI budget (dash-d9, Ben 2026-11-08): apart from the system light. ok = grey, warn = orange (forecast above cap − 5), bad = red (cap hit). */
-.bud{flex:none;background:none;border:none;border-left:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer;padding:2px 0 2px 12px;margin-left:0;min-width:0}
-.bud .bk{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--sub)}
-.bud .bn{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
-.bud .bs{font-size:12px;color:var(--sub);white-space:nowrap}
-.bud .bbar{position:relative;height:6px;border-radius:3px;background:var(--line);margin:6px 0 4px;overflow:visible}
-.bud .bbar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--sub)}
-.bud .bbar b{position:absolute;top:-3px;width:2px;height:12px;border-radius:1px;background:var(--sub);opacity:.55}
-.bud.warn .fc,.bud.warn .bk{color:var(--warn)} .bud.warn .bbar b{background:var(--warn);opacity:.9}
-.bud.bad .bn,.bud.bad .bk{color:var(--bad)} .bud.bad .bbar i{background:var(--bad)}
-.bud{width:112px}.bud .bn{font-size:30px;font-weight:600;line-height:1;letter-spacing:-.5px}
-body[data-layout="narrow"] .stats>.bud,body[data-layout="tall"] .stats>.bud{display:block;border-left:none;margin:0;padding:0;width:auto}
-body[data-layout="narrow"] .bud .bbar,body[data-layout="narrow"] .bud .bn,body[data-layout="tall"] .bud .bbar,body[data-layout="tall"] .bud .bn{display:none}
-body[data-layout="narrow"] .bud .bs,body[data-layout="tall"] .bud .bs{font-size:14px;font-weight:600}
+body[data-layout="narrow"] .stats>.bud,body[data-layout="tall"] .stats>.bud{display:block;border:none;padding:0}
+body[data-layout="narrow"] .stats>.bud .v,body[data-layout="tall"] .stats>.bud .v{display:none}
+body[data-layout="narrow"] .stats>.bud .l,body[data-layout="tall"] .stats>.bud .l,body[data-layout="narrow"] .stats>.bud .s,body[data-layout="tall"] .stats>.bud .s{display:inline;font-size:14px;margin:0;white-space:nowrap}
+body[data-layout="narrow"] .stats>.bud .l::after,body[data-layout="tall"] .stats>.bud .l::after{content:' · '}
+body[data-layout="narrow"] .hC .util,body[data-layout="narrow"] .hC .util-r,body[data-layout="narrow"] .hC .hmain{flex-wrap:wrap;row-gap:8px}
+body[data-layout="narrow"] .hC .util-r{justify-content:flex-start}
+body[data-layout="narrow"] .hC .clock{font-size:56px}
+body[data-layout="tall"] .hC .util,body[data-layout="tall"] .hC .util-r{flex-wrap:wrap;row-gap:8px}
+/* AI budget (dash-d9, Ben 2026-11-08): a KPI tile like the others, apart from the system light (see header v3 below). */
+.stat.bud .l{text-decoration:none}
 .cdt.now .cdn,.cdt.now .cdl{color:var(--bad)}
 .bdrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:16px}
 .bdrow b{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
@@ -308,25 +305,51 @@ body.night #toast button{color:#2457D6}
    Surface runs cooler — its display started failing when warm. */
 body.resting #app{visibility:hidden}
 body.resting #app *{animation-play-state:paused!important}
+
+/* ── Header v3 (Ben 2026-11-08): one quiet utility bar on top, one main row where everything sits on the same centre line.
+   Utility bar: date · Taipei | battery, ritual, Questions, system light, tools. Main row: clock | five equal KPI tiles | mode control.
+   Type scale: clock 72, KPI value 32, labels 13, utility 15. Spacing on an 8-px grid. */
+header.hC{flex-direction:column;align-items:stretch;gap:12px}
+.hC .util{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:40px}
+.hC .util-l{display:flex;align-items:baseline;gap:10px;font-size:16px;color:var(--sub);font-weight:500;white-space:nowrap}
+.hC .util-l .date{font-size:16px}.hC .util-l .tz{margin:0;font-size:15px}.hC .util-l .tz b{font-size:15px}.hC .util-l .sep{opacity:.5}
+.hC .util-r{display:flex;align-items:center;gap:16px}
+.hC .chips{gap:8px}.hC .hchip{height:40px;padding:0 14px}
+.hC .tools{display:flex;gap:6px}.hC .tools .tab{height:40px;width:40px}
+.hC .tools .tab.ic svg,.hC .tools .tab.mic svg{width:18px;height:18px}
+.hC .hmain{display:flex;align-items:center;gap:24px}
+.hC .clock{font-size:72px;letter-spacing:-2px;flex:none}
+.hC .stats{flex:1;display:flex;align-items:stretch;justify-content:stretch;padding:0;min-width:0}
+.hC .stat{flex:1 1 0;min-width:0;padding:0 12px;border-left:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
+.hC .stat:first-child{border-left:none;padding-left:0}
+.hC .stat .v{font-size:32px;line-height:1;font-variant-numeric:tabular-nums}
+.hC .stat .v small{font-size:.58em;font-weight:600;vertical-align:baseline;margin-right:1px;color:var(--sub)}
+.hC .stat .l{font-size:13px;margin-top:7px}
+.hC .stat .s{font-size:12px;margin-top:2px;min-height:16px}
+.hC .stat.bud.warn .fc{color:var(--warn);font-weight:600}
+.hC .stat.bud.bad .v,.hC .stat.bud.bad .v small,.hC .stat.bud.bad .fc{color:var(--bad)}
+.hC .stat.bud .l{text-decoration:none}
+/* segmented mode control: one pill, four segments */
+.hC .seg{display:inline-flex;gap:0;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;flex:none}
+.hC .seg .tab{height:38px;border:none;background:transparent;padding:0 16px;border-radius:999px;font-size:15px}
+.hC .seg .tab.on{background:var(--ink);color:var(--bg)}
 </style>
 </head>
 <body>
 <div id="app">
-  <header>
-    <div><div class="date" id="date"></div><div class="clock num" id="clock">--:--</div><div class="tz" id="tz"></div></div>
-    <div class="stats" id="stats"></div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
-      <nav class="tabs" aria-label="Mode">
-        <button class="tab" data-mode="auto" type="button">Auto</button>
-        <button class="tab" data-mode="morning" type="button">Morning</button>
-        <button class="tab" data-mode="work" type="button">Work</button>
-        <button class="tab" data-mode="evening" type="button">Evening</button>
-        <button class="tab" id="refresh" type="button" aria-label="Refresh">↻</button>
-        <button class="tab mic" id="mic" type="button" aria-label="Add by voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button>
-        <button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-        <button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button>
+  <header class="hC">
+    <div class="util">
+      <div class="util-l"><span class="date" id="date"></span><span class="sep">·</span><span class="tz" id="tz"></span></div>
+      <div class="util-r"><div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
+        <div class="tools"><button class="tab ic" id="refresh" type="button" aria-label="Refresh">↻</button><button class="tab mic" id="mic" type="button" aria-label="Add by voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button></div>
+      </div>
+    </div>
+    <div class="hmain">
+      <div class="clock num" id="clock">--:--</div>
+      <div class="stats" id="stats"></div>
+      <nav class="tabs seg" aria-label="Mode">
+        <button class="tab" data-mode="auto" type="button">Auto</button><button class="tab" data-mode="morning" type="button">Morning</button><button class="tab" data-mode="work" type="button">Work</button><button class="tab" data-mode="evening" type="button">Evening</button>
       </nav>
-      <div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
     </div>
   </header>
   <main id="main"></main>
@@ -509,7 +532,7 @@ const T = { // 常用的積木設定，各版面共用
 const LAYOUTS = {
   compact: {
     // Ben 2026-10-28: weather + schedule | FYI | To-Do + Follow-Ups (Questions moved to the header chip)
-    morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'timeline'] }, { cls: 'stack', items: ['countdowns', 'fyi'] }, { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
+    morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'countdowns', 'timeline'] }, { cls: 'stack', items: ['fyi'] }, { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
     // Ben 2026-10-28: Schedule column added, No Date kept
     work: { cls: 'grid5', items: [{ cls: 'stack', style: 'gap:12px', items: ['countdowns', 'colSched'] }, T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
     // Ben 2026-10-28: evening = wrap up today | plan tomorrow (weather, schedule, tasks) | the rest of the week
@@ -621,11 +644,10 @@ Object.assign(BLOCKS, {
   budget: (v) => {
     const b = data?.budget; if (!b) return '';
     const money = (n) => '$' + (n >= 100 ? Math.round(n) : n.toFixed(1));
-    const pct = (n) => Math.max(0, Math.min(100, n / b.cap * 100));
-    const bar = `<div class="bbar"><i style="width:${pct(b.spent)}%"></i><b style="left:calc(${pct(b.projected)}% - 1px)"></b></div>`;
-    // Style A (Ben chose 11/8): a big "spent" number like the other stats, a thin bar (spent / cap) with a tick at the forecast,
-    // and "AI · ~forecast / cap" under it. Countdowns stay in their block only (option a), not in the header.
-    return `<button class="bud ${b.level}" id="budbtn" type="button" aria-label="AI spend this month"><div class="bn">${money(b.spent)}</div>${bar}<div class="bs"><span class="bk">AI</span> · <span class="fc">~${money(b.projected)}</span> / ${money(b.cap)}</div></button>`;
+    // KPI tile (11/8 redesign v3): same three lines as the other stats. The "$" is set small so the digits sit at the same
+    // cap height as the counts next to it. Value stays ink, the forecast line carries the colour; red only at the cap.
+    const m2 = (n) => `<small>$</small>${n >= 100 ? Math.round(n) : n.toFixed(1)}`;
+    return `<button class="stat bud ${b.level}" id="budbtn" type="button" aria-label="AI spend this month"><div class="v">${m2(b.spent)}</div><div class="l">AI Spend</div><div class="s fc">~${money(b.projected)} of ${money(b.cap)}</div></button>`;
   },
   // Today's schedule: meetings + timed Task Hub reminders by time; red "Now" line; finished meetings fade
   timeline: (v) => {
@@ -768,7 +790,7 @@ function tick() {
     st.className = 'hchip lv-' + lv;
     $('statusText').textContent = stale ? "Can't reach NW2 · showing older data"
       : !h ? `Notion synced ${syncMin}m ago`
-      : h.level === 'ok' ? `All systems normal · synced ${syncMin}m ago`
+      : h.level === 'ok' ? 'All systems normal' // last sync time: in the panel (Notion sync row) — keeps the chip short (11/8)
       : h.bad ? `${plural(h.bad, 'issue')}${h.warn ? `, ${plural(h.warn, 'warning')}` : ''}` : plural(h.warn, 'warning');
   }
 }
@@ -791,7 +813,10 @@ function renderBatt() {
   // Ben 2026-11-06: charging gets its own colour (green + a pulsing bolt); at the 50% UEFI limit it is just "Plugged in" (grey).
   const charging = b.ac && b.pct < 45;
   const bolt = charging ? '<svg class="bolt" viewBox="0 0 10 14" style="width:9px;height:13px" aria-hidden="true"><path d="M6 0 0 8h4l-1 6 6-8H5z" fill="currentColor"/></svg>' : '';
-  el.innerHTML = `${icon}${bolt}${b.pct}%${b.ac ? (charging ? ' · Charging' : ' · Plugged in') : ' · On battery'}`;
+  // Plugged in at the limit: just the % and a small plug (short chip, 11/8); charging / on battery spell it out.
+  const plug = '<svg viewBox="0 0 12 14" style="width:10px;height:13px" aria-hidden="true"><path d="M3 0v4M9 0v4M1.5 4h9v3a4.5 4.5 0 0 1-9 0zM6 11.5V14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
+  el.innerHTML = `${icon}${bolt}${b.pct}%${b.ac ? (charging ? ' · Charging' : plug) : ' · On battery'}`;
+  el.title = b.ac ? (charging ? 'Charging' : 'Plugged in') : 'On battery';
   el.className = 'hchip bchip' + (b.ac ? (charging ? ' charging' : '') : b.pct < 25 ? ' on-bat low' : ' on-bat');
   el.style.display = '';
 }
