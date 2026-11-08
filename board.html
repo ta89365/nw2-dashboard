@@ -114,15 +114,32 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .stack>.fixed{flex:none}
 /* header stats (Ben 2026-10-28) */
 .stats{flex:1;display:flex;justify-content:center;align-items:flex-end;padding:0 0 2px 12px;min-width:0}
-.stat{padding:2px 16px;border-left:1px solid var(--line);min-width:0}
+.stat{padding:2px 9px;border-left:1px solid var(--line);min-width:min-content}
 .stat:first-child{border-left:none}
 .stat .v{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:600;line-height:1;letter-spacing:-.5px}
-.stat .l{font-size:13px;color:var(--sub);font-weight:500;margin-top:6px;white-space:nowrap}
-.stat .s{font-size:12px;color:var(--sub);margin-top:1px;white-space:nowrap;min-height:16px}
+.stat .l{font-size:12.5px;color:var(--sub);font-weight:500;margin-top:6px;white-space:nowrap}
+.stat .s{font-size:12px;color:var(--sub);margin-top:1px;white-space:nowrap;min-height:16px;overflow:hidden;text-overflow:ellipsis;width:0;min-width:100%}
 .stat.bad .v{color:var(--bad)}
 .stat.good .v{color:var(--good)}
 .stat.zero .v{color:var(--sub)}
 body[data-layout="narrow"] .stats>*,body[data-layout="tall"] .stats>*{display:none}
+/* AI budget (dash-d9, Ben 2026-11-08): apart from the system light. ok = grey, warn = orange (forecast above cap − 5), bad = red (cap hit). */
+.bud{flex:none;background:none;border:none;border-left:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer;padding:2px 0 2px 12px;margin-left:0;min-width:0}
+.bud .bk{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--sub)}
+.bud .bn{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bud .bs{font-size:12px;color:var(--sub);white-space:nowrap}
+.bud .bbar{position:relative;height:6px;border-radius:3px;background:var(--line);margin:6px 0 4px;overflow:visible}
+.bud .bbar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--sub)}
+.bud .bbar b{position:absolute;top:-3px;width:2px;height:12px;border-radius:1px;background:var(--sub);opacity:.55}
+.bud.warn .fc,.bud.warn .bk{color:var(--warn)} .bud.warn .bbar b{background:var(--warn);opacity:.9}
+.bud.bad .bn,.bud.bad .bk{color:var(--bad)} .bud.bad .bbar i{background:var(--bad)}
+.bud{width:112px}.bud .bn{font-size:30px;font-weight:600;line-height:1;letter-spacing:-.5px}
+body[data-layout="narrow"] .stats>.bud,body[data-layout="tall"] .stats>.bud{display:block;border-left:none;margin:0;padding:0;width:auto}
+body[data-layout="narrow"] .bud .bbar,body[data-layout="narrow"] .bud .bn,body[data-layout="tall"] .bud .bbar,body[data-layout="tall"] .bud .bn{display:none}
+body[data-layout="narrow"] .bud .bs,body[data-layout="tall"] .bud .bs{font-size:14px;font-weight:600}
+.cdt.now .cdn,.cdt.now .cdl{color:var(--bad)}
+.bdrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:16px}
+.bdrow b{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
 /* overdue (Ben 2026-10-28: make it obvious which tasks are overdue) */
 .odpill{display:inline-block;background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);font-weight:700;font-size:12px;border-radius:6px;padding:1px 7px;margin-right:6px;white-space:nowrap}
 button.stat{background:none;border-top:none;border-right:none;border-bottom:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
@@ -594,10 +611,21 @@ Object.assign(BLOCKS, {
     const done = v.counts.done_today;
     const tile = (val, label, cls = '', sub = '', id = '') => { const el = id ? 'button' : 'div';
       return `<${el} class="stat ${cls}${val === 0 && !cls.includes('bad') ? ' zero' : ''}"${id ? ` id="${id}" type="button"` : ''}><div class="v">${val}</div><div class="l">${label}</div><div class="s">${sub}</div></${el}>`; };
-    return tile(overdue, 'Overdue', overdue ? 'bad' : '', overdue ? 'Tap to see' : '', overdue ? 'odbtn' : '')
+    return tile(overdue, 'Overdue', overdue ? 'bad' : '', '', overdue ? 'odbtn' : '')
       + tile(v.counts.today, 'To-Do Today')
-      + tile(meets.length, meets.length === 1 ? 'Meeting' : 'Meetings', '', nextMeet ? (nextMeet.state === 'live' ? `In progress till ${nextMeet.end}` : `Next at ${nextMeet.start}`) : (meets.length ? 'All done' : ''))
-      + (done === undefined ? '' : tile(done, 'Done Today', done ? 'good' : ''));
+      + tile(meets.length, meets.length === 1 ? 'Meeting' : 'Meetings', '', nextMeet ? (nextMeet.state === 'live' ? `Till ${nextMeet.end}` : `Next ${nextMeet.start}`) : (meets.length ? 'All done' : ''))
+      + (done === undefined ? '' : tile(done, 'Done Today', done ? 'good' : ''))
+      + BLOCKS.budget(v);
+  },
+  // AI budget (dash-d9, Ben 2026-11-08): spent → forecast / cap, apart from the system light. Tap → details.
+  budget: (v) => {
+    const b = data?.budget; if (!b) return '';
+    const money = (n) => '$' + (n >= 100 ? Math.round(n) : n.toFixed(1));
+    const pct = (n) => Math.max(0, Math.min(100, n / b.cap * 100));
+    const bar = `<div class="bbar"><i style="width:${pct(b.spent)}%"></i><b style="left:calc(${pct(b.projected)}% - 1px)"></b></div>`;
+    // Style A (Ben chose 11/8): a big "spent" number like the other stats, a thin bar (spent / cap) with a tick at the forecast,
+    // and "AI · ~forecast / cap" under it. Countdowns stay in their block only (option a), not in the header.
+    return `<button class="bud ${b.level}" id="budbtn" type="button" aria-label="AI spend this month"><div class="bn">${money(b.spent)}</div>${bar}<div class="bs"><span class="bk">AI</span> · <span class="fc">~${money(b.projected)}</span> / ${money(b.cap)}</div></button>`;
   },
   // Today's schedule: meetings + timed Task Hub reminders by time; red "Now" line; finished meetings fade
   timeline: (v) => {
@@ -654,7 +682,7 @@ Object.assign(BLOCKS, {
   countdowns: (v) => {
     const cds = v.notices?.countdowns || []; if (!cds.length) return '';
     const tile = (c) => { const d = c.days_left; const hot = d <= 3;
-      return `<div class="cdt${hot ? ' hot' : ''}"><div><div class="cdn">${d === 0 ? '0' : d}</div><div class="cdl">${d === 0 ? 'today' : d === 1 ? 'day' : 'days'}</div></div><div style="min-width:0"><div class="cdtitle c1">${esc(c.title)}</div><div class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</div></div></div>`; };
+      return `<div class="cdt${d === 0 ? ' now' : hot ? ' hot' : ''}"><div style="min-width:52px;text-align:center"><div class="cdn">${d === 0 ? 'Today' : d}</div><div class="cdl">${d === 0 ? '' : d === 1 ? 'day' : 'days'}</div></div><div style="min-width:0"><div class="cdtitle c1">${esc(c.title)}</div><div class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</div></div></div>`; };
     return `<section class="card fixed" style="padding:16px 20px"><h2 style="font-size:17px;margin-bottom:6px">Countdown <span class="n">${cds.length}</span></h2><div class="cds">${cds.map(tile).join('')}</div></section>`;
   },
   // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
@@ -970,14 +998,39 @@ function openHealth(kind = panelKind) {
   if (kind === 'detail') { if (findTask(detailId) && !pending.has(detailId)) openDetail(detailId); else $('healthPanel').style.display = 'none'; return; }
   panelKind = kind;
   const v = derive(data);
-  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : 'System Health';
-  $('healthBody').innerHTML = kind === 'overdue'
+  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : 'System Health';
+  $('healthBody').innerHTML = kind === 'budget' ? budgetPanel()
+    : kind === 'overdue'
     ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
       + (v.overdue.length ? hintBar() + v.overdue.map((t) => ROWS.both(t)).join('') : '<div class="empty">Nothing overdue</div>')
     : kind === 'questions'
     ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
     : BLOCKS.health(v) + '<div class="detailsRow"><button class="btn primary" id="healthDetails" type="button">Details</button><span class="m">Spending, 7:45 acceptance, run history, alerts</span></div>';
   $('healthPanel').style.display = 'flex';
+}
+// Budget details (dash-d9). The last 3 days come from ?section=health_detail, fetched only when the panel opens.
+let bud3 = null;
+function budgetPanel() {
+  const b = data.budget; if (!b) return '<div class="empty">No budget data right now</div>';
+  const $$ = (n) => '$' + Number(n).toFixed(2);
+  const row = (l, r) => `<div class="bdrow"><span>${l}</span><b>${r}</b></div>`;
+  const days = bud3 ? bud3.map((d) => row(shortDay(d.day), $$(d.usd))).join('') : '<div class="m" style="padding:8px 0">Loading the last 3 days…</div>';
+  if (!bud3) loadBud3();
+  return row('Spent so far', $$(b.spent)) + row('Forecast for the month', '~' + $$(b.projected)) + row('Monthly cap', $$(b.cap))
+    + row('Average per day (last 3 days)', $$(b.daily_rate)) + row('Days left', b.days_left)
+    + `<div class="fy-g" style="margin-top:12px">Last 3 days</div>${days}`
+    + `<div class="m" style="padding-top:12px">${b.level === 'bad' ? 'The cap is reached — NW2 is paused until next month or until the cap is raised.' : 'At the cap NW2 pauses. To spend less, talk it over in NW2-Build.'}</div>`;
+}
+async function loadBud3() {
+  try {
+    const r = await fetch(API + '?section=health_detail', { headers: { 'x-nw2-dash': key }, cache: 'no-store' });
+    const j = await r.json(); const by = {};
+    (j.spend_daily || []).forEach((x) => { by[x.day] = (by[x.day] || 0) + x.usd; });
+    const t = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date()), days = [-2, -1, 0].map((k) => new Date(Date.parse(t + 'T12:00:00Z') + k * 864e5).toISOString().slice(0, 10));
+    bud3 = days.map((d) => ({ day: d, usd: by[d] || 0 }));
+  } catch { bud3 = []; }
+  if ($('healthPanel').style.display === 'flex' && panelKind === 'budget') openHealth('budget');
+  setTimeout(() => { bud3 = null; }, 10 * 60e3);
 }
 $('healthPanel').addEventListener('click', (e) => { if (e.target.id === 'healthPanel') $('healthPanel').style.display = 'none'; });
 function toast(html, ms = 2500) { const t = $('toast'); t.innerHTML = html; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', ms); }
@@ -990,6 +1043,7 @@ document.addEventListener('click', (e) => {
   if (b.id === 'off-btn') { setScreenOff(true); return; }
   if (b.id === 'status') { openHealth('health'); return; }
   if (b.id === 'qchip') { openHealth('questions'); return; }
+  if (b.id === 'budbtn') { openHealth('budget'); return; }
   if (b.id === 'rchip') { openRitual(curMode() === 'morning' ? 'morning' : 'evening'); return; }
   if (b.id === 'mic') { openVoice(); return; }
   if (b.id === 'vClose') { closeVoice(); return; }
