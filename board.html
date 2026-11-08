@@ -292,8 +292,14 @@ body.night #toast button{color:#2457D6}
   .cdt .cdtitle{font-size:15.5px;margin-top:0}
   .cdt .cdd{display:block}
 }
+.cdt{position:relative}
+.cdt.ai{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line)}
+.cdt.ai .cdtitle,.cdt.ai .cdn{opacity:.78}
+.cdt .aib{position:absolute;top:7px;right:8px;font-size:10px;font-weight:700;letter-spacing:.3px;color:var(--sub);background:var(--chip);border-radius:6px;padding:1px 5px;line-height:14px}
+@container (max-width:100px){ .cdt .aib .w{display:none} }
+.aitag{font-size:11px;font-weight:700;color:var(--sub);background:var(--chip);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .cdover{font-size:12.5px;font-weight:600;color:var(--warn);margin-left:auto;margin-right:10px;white-space:nowrap}
-@container (max-width:100px){ .cdt .in{padding:8px 8px 7px} .cdt .cdl{display:none} .cdt .cdtitle{font-size:11.5px;line-height:1.2;-webkit-line-clamp:3;overflow-wrap:anywhere} }
+@container (max-width:100px){ .cdt .in{padding:8px 8px 7px} .cdt .cdl{display:none} .cdt .cdtitle{font-size:11.5px;line-height:1.2;-webkit-line-clamp:3;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word} }
 /* ── Voice input (dash-d5): mic button + review sheet ── */
 .tab.mic{width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .tab.mic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -489,6 +495,8 @@ function derive(d0) {
 
 // ── 積木 ──
 // 每塊：(v, o) => HTML。v = derive 過的資料；o = 版面設定裡這塊的選項（items 指定用哪份清單）。
+// Countdown order (dash-d10): Ben's first, AI picks after, each by date.
+const cdSort = (a) => a.slice().sort((x, y) => (x.source === 'ai') - (y.source === 'ai') || x.date.localeCompare(y.date));
 const BLOCKS = {
   // 最上面的大卡：第一個提醒，沒有就今天第一件
   hero: (v) => {
@@ -717,10 +725,11 @@ Object.assign(BLOCKS, {
   },
   // Countdowns (dash-d5): filing days, trips… Empty → nothing rendered.
   countdowns: (v) => {
-    const cds = v.notices?.countdowns || []; if (!cds.length) return '';
-    const tile = (c) => { const d = c.days_left;
-      return `<div class="cdt${d === 0 ? ' now' : d <= 3 ? ' hot' : ''}"><div class="in"><div class="num"><div class="cdn">${d === 0 ? 'Today' : d}</div><div class="cdl">${d === 0 ? '' : d === 1 ? 'day' : 'days'}</div></div><div class="txt"><div class="cdtitle">${esc(c.title)}</div><div class="cdd">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</div></div></div></div>`; };
-    const shown = cds.slice(0, 3), over = cds.length - shown.length;
+    const cds = cdSort(v.notices?.countdowns || []); if (!cds.length) return '';
+    const tile = (c) => { const d = c.days_left, ai = c.source === 'ai';
+      return `<div class="cdt${ai ? ' ai' : ''}${d === 0 ? ' now' : d <= 3 ? ' hot' : ''}">${ai ? '<span class="aib">AI<span class="w"> pick</span></span>' : ''}<div class="in"><div class="num"><div class="cdn">${d === 0 ? 'Today' : d}</div><div class="cdl">${d === 0 ? '' : d === 1 ? 'day' : 'days'}</div></div><div class="txt"><div class="cdtitle" lang="en">${esc(c.title)}</div><div class="cdd">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</div></div></div></div>`; };
+    // Max 3 tiles; Ben's first, AI picks only fill free slots. "+N · keep 3?" counts Ben's only (work order df0f9d0a).
+    const shown = cds.slice(0, 3), over = Math.max(0, cds.filter((c) => c.source !== 'ai').length - 3);
     return `<section class="card fixed" style="padding:16px 20px"><h2 style="font-size:17px;margin-bottom:8px;display:flex;align-items:baseline">Countdown${over ? `<span class="cdover">+${over} · keep 3?</span>` : ''}<span class="n"${over ? ' style="margin-left:0"' : ''}>${cds.length}</span></h2><div class="cds">${shown.map(tile).join('')}</div></section>`;
   },
   // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
@@ -1039,10 +1048,10 @@ function openHealth(kind = panelKind) {
   if (kind === 'detail') { if (findTask(detailId) && !pending.has(detailId)) openDetail(detailId); else $('healthPanel').style.display = 'none'; return; }
   panelKind = kind;
   const v = derive(data);
-  const cds = v.notices?.countdowns || [];
+  const cds = cdSort(v.notices?.countdowns || []);
   $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : 'System Health';
   $('healthBody').innerHTML = kind === 'budget' ? budgetPanel()
-    : kind === 'countdowns' ? (cds.map((c) => `<div class="bdrow"><span><b style="display:inline-block;min-width:64px;color:${c.days_left === 0 ? 'var(--bad)' : c.days_left <= 3 ? 'var(--warn)' : 'inherit'}">${c.days_left === 0 ? 'Today' : c.days_left === 1 ? '1 day' : `${c.days_left} days`}</b>${esc(c.title)}</span><span class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</span></div>`).join('') + '<div class="m" style="padding-top:12px">New dates go in via NW2-Inbox or NW2-Build.</div>')
+    : kind === 'countdowns' ? (cds.map((c) => `<div class="bdrow"><span><b style="display:inline-block;min-width:64px;color:${c.days_left === 0 ? 'var(--bad)' : c.days_left <= 3 ? 'var(--warn)' : 'inherit'}">${c.days_left === 0 ? 'Today' : c.days_left === 1 ? '1 day' : `${c.days_left} days`}</b>${esc(c.title)}${c.source === 'ai' ? ' <span class="aitag">AI pick</span>' : ''}${c.source === 'ai' && c.pick_reason ? `<div class="m" style="margin:3px 0 0 64px">${esc(c.pick_reason)}</div>` : ''}</span><span class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</span></div>`).join('') + '<div class="m" style="padding-top:12px">New dates go in via NW2-Inbox or NW2-Build. AI picks fill free slots; NW2-Ask will ask whether to keep them.</div>')
     : kind === 'overdue'
     ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
       + (v.overdue.length ? hintBar() + v.overdue.map((t) => ROWS.both(t)).join('') : '<div class="empty">Nothing overdue</div>')
