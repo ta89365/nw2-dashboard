@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HQ 入口</title>
+<!-- hq-go 清單頁（NW2-Build V7 2026-11-10）。Edge Function 不能送 HTML，所以這頁放 GitHub Pages，讀 hq-go?format=json。
+     每一列的連結是固定網址 hq-go?role=<角色>，換代後不用改；把那一列的連結拖到書籤列即可。 -->
+<style>
+  :root { color-scheme: light dark; --fg:#1d1d1f; --bg:#fff; --muted:#6e6e73; --line:#d2d2d7; --link:#0a5bd3; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#f5f5f7; --bg:#111; --muted:#a1a1a6; --line:#3a3a3c; --link:#6ea8ff; } }
+  body { margin:0; padding:16px; font:16px/1.5 -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; color:var(--fg); background:var(--bg); }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p { margin:0 0 12px; color:var(--muted); font-size:14px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:13px; color:var(--muted); font-weight:600; }
+  a { color:var(--link); text-decoration:none; font-weight:600; }
+  .s { font-size:13px; color:var(--muted); white-space:nowrap; }
+</style>
+</head>
+<body>
+<h1>對話入口</h1>
+<p>點名稱進現任對話；想固定就把那一列的名稱拖到書籤列（換代後網址不變）。</p>
+<table>
+  <thead><tr><th>對話</th><th>狀態</th><th>開始（休士頓）</th></tr></thead>
+  <tbody id="rows"><tr><td colspan="3" class="s">讀取中…</td></tr></tbody>
+</table>
+<script>
+const API = "https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/hq-go?format=json";
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const when = (r) => (r.status === "Current" ? r.started_local : r.spawned_local || "").replace("T", " ").slice(0, 16) || "—";
+fetch(API, { cache: "no-store" }).then((r) => r.json()).then((j) => {
+  const tb = document.getElementById("rows");
+  if (!j.rows || !j.rows.length) { tb.innerHTML = '<tr><td colspan="3" class="s">目前沒有登記的對話</td></tr>'; return; }
+  tb.innerHTML = j.rows.map((r) => `<tr><td><a href="${esc(r.link)}">${esc(r.chat_name)}</a></td>` +
+    `<td class="s">${r.status === "Current" ? "現任" : "生成中"}</td><td class="s">${esc(when(r))}</td></tr>`).join("");
+}).catch(() => {
+  document.getElementById("rows").innerHTML = '<tr><td colspan="3" class="s">讀不到清單，請稍後重新整理</td></tr>';
+});
+</script>
+</body>
+</html>
