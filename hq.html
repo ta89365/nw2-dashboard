@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HQ 入口</title>
-<!-- hq-go 清單頁 v2（HQ 2026-11-10）。Edge Function 只給 JSON，這頁放 GitHub Pages，讀 hq-go?format=json。
+<!-- hq-go 清單頁 v3（Board 2026-11-10：清單要看板密碼；v2 HQ 2026-11-10）。Edge Function 只給 JSON，這頁放 GitHub Pages，讀 hq-go?format=json。
      每張卡的連結是固定網址 hq-go?role=<角色>，換代後不用改；想固定就把卡片名稱拖到書籤列。
      v2：按專案分組（HQ／NW2／Pantry）、卡片、版本徽章、生成中標記、手機一欄、可直接複製固定連結。 -->
 <style>
@@ -72,6 +72,22 @@ const DESC = {
   "NW2-Lookup": "查證：訊息、會議、錄音", "NW2-Lab": "研發、原型、交接單", "NW2-Board": "Surface 看板",
   "Pantry-Ask": "每天 20:20 確認今天、備明天", "Pantry-Inbox": "吃了什麼、庫存變動", "Pantry-Kitchen": "怎麼煮、怎麼加熱、果昔", "Pantry-Shop": "週六採買", "Pantry-Build": "Pantry 系統",
 };
+// v3（11/10，Ben 選「清單上鎖、跳轉不鎖」）：清單要帶看板密碼。和看板同網域，直接用看板存的 localStorage nw2.key；
+// 沒有或 401 → 顯示輸入框（存回同一個 nw2.key，看板也能用）。卡片連結 hq-go?role= 不用密碼。
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+let key = store.get("nw2.key");
+function askKey(msg) {
+  document.getElementById("updated").textContent = "";
+  document.getElementById("main").innerHTML = `<form id="keyForm" class="empty" style="display:flex;flex-direction:column;gap:10px;align-items:center">
+    <div>${msg}</div>
+    <input id="keyIn" type="password" autocomplete="current-password" placeholder="看板密碼" style="font:inherit;padding:10px 12px;border-radius:10px;border:1px solid #8886;min-width:240px">
+    <button type="submit" class="copy" style="padding:8px 18px">進入</button></form>`;
+  document.getElementById("keyForm").addEventListener("submit", (e) => {
+    e.preventDefault(); key = document.getElementById("keyIn").value.trim();
+    if (!key) return; store.set("nw2.key", key); load();
+  });
+  document.getElementById("keyIn").focus();
+}
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmt = (s) => (s || "").replace("T", " ").slice(5, 16).replace("-", "/") || "—";
 const short = (role) => role.replace(/^(NW2|Pantry)-/, "");
@@ -88,7 +104,13 @@ function card(r, cls) {
   </div>`;
 }
 
-fetch(API, { cache: "no-store" }).then((res) => res.json()).then((j) => {
+function load() {
+if (!key) { askKey("請輸入看板密碼（和 Surface 看板同一組；這台瀏覽器開過看板就不用再輸入）"); return; }
+document.getElementById("main").innerHTML = '<div class="empty">讀取中…</div>';
+fetch(API, { cache: "no-store", headers: { "x-nw2-dash": key } }).then((res) => {
+  if (res.status === 401) { const e = new Error("unauthorized"); e.auth = true; throw e; }
+  return res.json();
+}).then((j) => {
   const rows = (j.rows || []).slice().sort((a, b) => {
     const ia = ORDER.indexOf(a.role), ib = ORDER.indexOf(b.role);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.role.localeCompare(b.role) || (a.version ?? 0) - (b.version ?? 0);
@@ -105,14 +127,17 @@ fetch(API, { cache: "no-store" }).then((res) => res.json()).then((j) => {
   main.innerHTML = html;
   const now = new Date();
   document.getElementById("updated").textContent = `${rows.length} 個對話 · ${now.toLocaleTimeString("zh-Hant", { hour: "2-digit", minute: "2-digit" })} 更新`;
-  main.addEventListener("click", (e) => {
+  if (!main.dataset.bound) main.dataset.bound = "1", main.addEventListener("click", (e) => {
     const b = e.target.closest(".copy"); if (!b) return;
     navigator.clipboard?.writeText(b.dataset.link).then(() => { b.textContent = "已複製"; b.classList.add("ok"); setTimeout(() => { b.textContent = "複製連結"; b.classList.remove("ok"); }, 1500); });
   });
-}).catch(() => {
-  document.getElementById("main").innerHTML = '<div class="err">讀不到清單，請稍後重新整理。備用：<a href="https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/hq-go">純文字清單</a></div>';
+}).catch((err) => {
+  if (err && err.auth) { askKey("密碼不對或已更換，請重新輸入看板密碼"); return; }
+  document.getElementById("main").innerHTML = '<div class="err">讀不到清單，請稍後重新整理。</div>';
   document.getElementById("updated").textContent = "";
 });
+}
+load();
 </script>
 </body>
 </html>
