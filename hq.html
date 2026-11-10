@@ -4,39 +4,114 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HQ 入口</title>
-<!-- hq-go 清單頁（NW2-Build V7 2026-11-10）。Edge Function 不能送 HTML，所以這頁放 GitHub Pages，讀 hq-go?format=json。
-     每一列的連結是固定網址 hq-go?role=<角色>，換代後不用改；把那一列的連結拖到書籤列即可。 -->
+<!-- hq-go 清單頁 v2（HQ 2026-11-10）。Edge Function 只給 JSON，這頁放 GitHub Pages，讀 hq-go?format=json。
+     每張卡的連結是固定網址 hq-go?role=<角色>，換代後不用改；想固定就把卡片名稱拖到書籤列。
+     v2：按專案分組（HQ／NW2／Pantry）、卡片、版本徽章、生成中標記、手機一欄、可直接複製固定連結。 -->
 <style>
-  :root { color-scheme: light dark; --fg:#1d1d1f; --bg:#fff; --muted:#6e6e73; --line:#d2d2d7; --link:#0a5bd3; }
-  @media (prefers-color-scheme: dark) { :root { --fg:#f5f5f7; --bg:#111; --muted:#a1a1a6; --line:#3a3a3c; --link:#6ea8ff; } }
-  body { margin:0; padding:16px; font:16px/1.5 -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; color:var(--fg); background:var(--bg); }
-  h1 { font-size:20px; margin:0 0 4px; }
-  p { margin:0 0 12px; color:var(--muted); font-size:14px; }
-  table { width:100%; border-collapse:collapse; }
-  th, td { text-align:left; padding:10px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { font-size:13px; color:var(--muted); font-weight:600; }
-  a { color:var(--link); text-decoration:none; font-weight:600; }
-  .s { font-size:13px; color:var(--muted); white-space:nowrap; }
+  :root {
+    color-scheme: light dark;
+    --fg:#1d1d1f; --bg:#f5f5f7; --card:#fff; --muted:#6e6e73; --line:#e3e3e8; --link:#0a5bd3;
+    --hq:#6f42c1; --nw2:#0a5bd3; --pantry:#1f8a4c; --spawn:#b45309; --spawn-bg:#fff4e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#f5f5f7; --bg:#0f0f10; --card:#1c1c1e; --muted:#a1a1a6; --line:#2c2c2e; --link:#8ab8ff;
+            --hq:#b79cf0; --nw2:#8ab8ff; --pantry:#5fd08a; --spawn:#f3b35a; --spawn-bg:#2a2010; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:20px 16px 40px; font:16px/1.45 -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif; color:var(--fg); background:var(--bg); }
+  header { max-width:960px; margin:0 auto 18px; display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  h1 { font-size:22px; margin:0; letter-spacing:.2px; }
+  .hint { color:var(--muted); font-size:13px; }
+  main { max-width:960px; margin:0 auto; }
+  section { margin-bottom:22px; }
+  h2 { font-size:13px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin:0 0 10px 2px; display:flex; align-items:center; gap:8px; }
+  h2 .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 14px 12px; display:flex; flex-direction:column; gap:8px; position:relative;
+          transition:transform .08s ease, box-shadow .08s ease; }
+  .card:active { transform:scale(.99); }
+  .card a.main { color:inherit; text-decoration:none; display:block; }
+  .card .name { font-size:17px; font-weight:700; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card .name .ver { font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--line); color:var(--fg); }
+  .card .role { font-size:13px; color:var(--muted); }
+  .card .meta { font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:2px; }
+  .card.spawning { border-color:var(--spawn); background:var(--spawn-bg); }
+  .card.spawning .ver { background:var(--spawn); color:#fff; }
+  .badge { font-size:11px; font-weight:700; padding:2px 7px; border-radius:6px; color:#fff; }
+  .badge.hq { background:var(--hq); } .badge.nw2 { background:var(--nw2); } .badge.pantry { background:var(--pantry); }
+  .open { display:inline-block; margin-top:4px; padding:8px 12px; border-radius:10px; background:var(--link); color:#fff !important; text-decoration:none; font-weight:700; font-size:14px; text-align:center; }
+  .copy { border:1px solid var(--line); background:transparent; color:var(--muted); border-radius:8px; padding:4px 8px; font-size:12px; cursor:pointer; }
+  .copy:hover { color:var(--fg); }
+  .copy.ok { color:var(--pantry); border-color:var(--pantry); }
+  .empty, .err { color:var(--muted); font-size:14px; padding:14px; }
+  footer { max-width:960px; margin:26px auto 0; color:var(--muted); font-size:12px; line-height:1.6; }
+  footer code { font-size:12px; background:var(--card); border:1px solid var(--line); padding:1px 5px; border-radius:5px; }
+  @media (max-width:520px) { body { padding:14px 12px 32px; } .grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
-<h1>對話入口</h1>
-<p>點名稱進現任對話；想固定就把那一列的名稱拖到書籤列（換代後網址不變）。</p>
-<table>
-  <thead><tr><th>對話</th><th>狀態</th><th>開始（休士頓）</th></tr></thead>
-  <tbody id="rows"><tr><td colspan="3" class="s">讀取中…</td></tr></tbody>
-</table>
+<header>
+  <h1>對話入口</h1>
+  <div class="hint" id="updated">讀取中…</div>
+</header>
+<main id="main"><div class="empty">讀取中…</div></main>
+<footer>
+  點「開啟」進現任對話。每張卡的網址都是固定的 <code>hq-go?role=角色</code>，換代後不會變；常用的把「開啟」拖到書籤列，或按「複製連結」。橘色卡＝接班人正在出生中。
+</footer>
 <script>
 const API = "https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/hq-go?format=json";
+const GROUPS = [
+  { key: "HQ",     label: "HQ 總控",   cls: "hq",     test: (r) => r.role === "HQ" },
+  { key: "NW2",    label: "NW2",       cls: "nw2",    test: (r) => r.role.startsWith("NW2-") },
+  { key: "Pantry", label: "Pantry",    cls: "pantry", test: (r) => r.role.startsWith("Pantry-") },
+  { key: "Other",  label: "其他",      cls: "hq",     test: () => true },
+];
+const ORDER = ["HQ","NW2-Build","NW2-Ask","NW2-Inbox","NW2-Lookup","NW2-Lab","NW2-Board","Pantry-Ask","Pantry-Inbox","Pantry-Kitchen","Pantry-Shop","Pantry-Build"];
+const DESC = {
+  "HQ": "跨專案總控、進度與換代", "NW2-Build": "維護、部署、待辦", "NW2-Ask": "每天 12:10／20:30 問你", "NW2-Inbox": "直接輸入：要做的事、提醒、記事",
+  "NW2-Lookup": "查證：訊息、會議、錄音", "NW2-Lab": "研發、原型、交接單", "NW2-Board": "Surface 看板",
+  "Pantry-Ask": "每天 20:20 確認今天、備明天", "Pantry-Inbox": "吃了什麼、庫存變動", "Pantry-Kitchen": "怎麼煮、怎麼加熱、果昔", "Pantry-Shop": "週六採買", "Pantry-Build": "Pantry 系統",
+};
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const when = (r) => (r.status === "Current" ? r.started_local : r.spawned_local || "").replace("T", " ").slice(0, 16) || "—";
-fetch(API, { cache: "no-store" }).then((r) => r.json()).then((j) => {
-  const tb = document.getElementById("rows");
-  if (!j.rows || !j.rows.length) { tb.innerHTML = '<tr><td colspan="3" class="s">目前沒有登記的對話</td></tr>'; return; }
-  tb.innerHTML = j.rows.map((r) => `<tr><td><a href="${esc(r.link)}">${esc(r.chat_name)}</a></td>` +
-    `<td class="s">${r.status === "Current" ? "現任" : "生成中"}</td><td class="s">${esc(when(r))}</td></tr>`).join("");
+const fmt = (s) => (s || "").replace("T", " ").slice(5, 16).replace("-", "/") || "—";
+const short = (role) => role.replace(/^(NW2|Pantry)-/, "");
+
+function card(r, cls) {
+  const spawning = r.status !== "Current";
+  const ver = r.version ?? (r.chat_name || "").split(" V").pop();
+  return `<div class="card ${spawning ? "spawning" : ""}">
+    <div class="name"><span class="badge ${cls}">${esc(cls === "hq" ? "HQ" : cls === "nw2" ? "NW2" : "Pantry")}</span>${esc(short(r.role))}<span class="ver">V${esc(ver)}</span></div>
+    <div class="role">${esc(DESC[r.role] || r.role)}</div>
+    <a class="open" href="${esc(r.link)}">${spawning ? "出生中…（點了會到前一版）" : "開啟 " + esc(r.chat_name)}</a>
+    <div class="meta"><span>${spawning ? "接班人出生中，開始於 " + esc(fmt(r.spawned_local)) : "這一版從 " + esc(fmt(r.started_local)) + " 起"}</span>
+      <button class="copy" data-link="${esc(r.link)}">複製連結</button></div>
+  </div>`;
+}
+
+fetch(API, { cache: "no-store" }).then((res) => res.json()).then((j) => {
+  const rows = (j.rows || []).slice().sort((a, b) => {
+    const ia = ORDER.indexOf(a.role), ib = ORDER.indexOf(b.role);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.role.localeCompare(b.role) || (a.version ?? 0) - (b.version ?? 0);
+  });
+  const main = document.getElementById("main");
+  if (!rows.length) { main.innerHTML = '<div class="empty">目前沒有登記的對話</div>'; return; }
+  const used = new Set(); let html = "";
+  for (const g of GROUPS) {
+    const mine = rows.filter((r) => !used.has(r) && g.test(r));
+    if (!mine.length) continue;
+    mine.forEach((r) => used.add(r));
+    html += `<section><h2><span class="dot" style="background:var(--${g.cls})"></span>${esc(g.label)} <span style="font-weight:500">${mine.length}</span></h2><div class="grid">${mine.map((r) => card(r, g.cls)).join("")}</div></section>`;
+  }
+  main.innerHTML = html;
+  const now = new Date();
+  document.getElementById("updated").textContent = `${rows.length} 個對話 · ${now.toLocaleTimeString("zh-Hant", { hour: "2-digit", minute: "2-digit" })} 更新`;
+  main.addEventListener("click", (e) => {
+    const b = e.target.closest(".copy"); if (!b) return;
+    navigator.clipboard?.writeText(b.dataset.link).then(() => { b.textContent = "已複製"; b.classList.add("ok"); setTimeout(() => { b.textContent = "複製連結"; b.classList.remove("ok"); }, 1500); });
+  });
 }).catch(() => {
-  document.getElementById("rows").innerHTML = '<tr><td colspan="3" class="s">讀不到清單，請稍後重新整理</td></tr>';
+  document.getElementById("main").innerHTML = '<div class="err">讀不到清單，請稍後重新整理。備用：<a href="https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/hq-go">純文字清單</a></div>';
+  document.getElementById("updated").textContent = "";
 });
 </script>
 </body>
