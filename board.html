@@ -97,6 +97,14 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .hrow.lv-bad .hnote{color:var(--bad);font-weight:700}
 .hrow.lv-warn .hnote{color:var(--warn)}
 .halert{padding:10px 0;border-top:1px solid var(--line)}
+.sysfix{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;color:var(--sub);font-size:14px}
+.sysfix summary{cursor:pointer;list-style:none;min-height:32px;display:flex;align-items:center}
+.sysfix summary::-webkit-details-marker{display:none}
+.sysfix summary::before{content:'▸';display:inline-block;width:16px;transition:transform .15s}
+.sysfix[open] summary::before{transform:rotate(90deg)}
+.sysfix .hrow,.sysfix .halert{opacity:.75}
+.sysfix .hrow .hnote{color:var(--sub)!important;font-weight:400!important}
+.swchip{background:var(--amberbg)!important;color:var(--warn)!important;font-weight:600;white-space:nowrap}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 22px;border-radius:12px;font-size:16px;display:none}
 /* ── Reminders (dash-d3 notices) + weather ── */
 .qchip b{font-family:'Space Grotesk',sans-serif}
@@ -130,6 +138,7 @@ body[data-layout="narrow"] .stats>.bud .l,body[data-layout="tall"] .stats>.bud .
 body[data-layout="narrow"] .stats>.bud .l::after,body[data-layout="tall"] .stats>.bud .l::after{content:' · '}
 body[data-layout="narrow"] .hC .util,body[data-layout="narrow"] .hC .util-r,body[data-layout="narrow"] .hC .hmain{flex-wrap:wrap;row-gap:8px}
 body[data-layout="narrow"] .hC .util-r{justify-content:flex-start}
+body[data-layout="narrow"] .chips{flex-wrap:wrap;row-gap:8px}
 body[data-layout="narrow"] .hC .clock{font-size:56px}
 body[data-layout="tall"] .hC .util,body[data-layout="tall"] .hC .util-r{flex-wrap:wrap;row-gap:8px}
 /* AI budget (dash-d9, Ben 2026-11-08): a KPI tile like the others, apart from the system light (see header v3 below). */
@@ -361,7 +370,7 @@ header.hC{flex-direction:column;align-items:stretch;gap:12px}
   <header class="hC">
     <div class="util">
       <div class="util-l"><span class="date" id="date"></span><span class="sep">·</span><span class="tz" id="tz"></span></div>
-      <div class="util-r"><div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
+      <div class="util-r"><div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip swchip" id="swchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
         <div class="tools"><button class="tab ic" id="refresh" type="button" aria-label="Refresh">↻</button><button class="tab mic" id="mic" type="button" aria-label="Add by voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button></div>
       </div>
     </div>
@@ -396,6 +405,7 @@ const API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-dashboard
 const POLL_MS = 60_000;
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
 let key = store.get('nw2.key');
+let sysOpen = false; // health panel: the grey self-repair list stays open across refreshes once Ben opens it (dash-d12)
 let mode = store.get('nw2.mode') || 'auto';
 let data = null, lastOk = 0, failing = false, seenKeys = null;
 const $ = (id) => document.getElementById(id);
@@ -530,9 +540,16 @@ const BLOCKS = {
   health: (v) => {
     const h = v.health;
     if (!h) return '<div class="empty">Health data isn\'t available right now (tasks are unaffected)</div>';
-    const rows = h.checks.map((c) => `<div class="hrow lv-${c.level}"><span class="dot lv-${c.level}"></span><div class="hname">${esc(c.name)}</div><div class="hnote">${esc(c.note)}</div></div>`).join('');
-    const al = h.alerts.length ? `<h2 style="margin:14px 0 4px;font-size:17px">Open alerts <span class="n">${h.alerts.length}</span></h2>` + h.alerts.map((a) => `<div class="halert"><div class="t" style="font-size:15.5px">${esc(a.item)}</div><div class="m">${esc(a.since)} · ${esc(a.source)}</div><div class="m" style="margin-top:4px">${esc(a.detail)}</div></div>`).join('') : '';
-    return rows + al;
+    // dash-d12 (Ben 11/13): the light and these rows are only what Ben must act on; the rest is one grey "self-repair" line.
+    const hrow = (c) => `<div class="hrow lv-${c.level}"><span class="dot lv-${c.level}"></span><div class="hname">${esc(c.name)}</div><div class="hnote">${esc(c.note)}</div></div>`;
+    const halert = (a) => `<div class="halert"><div class="t" style="font-size:15.5px">${esc(a.item)}</div><div class="m">${esc(a.since)} · ${esc(a.source)}</div><div class="m" style="margin-top:4px">${esc(a.detail)}</div></div>`;
+    const rows = h.checks.filter((c) => c.ben !== false).map(hrow).join('');
+    const al = h.alerts.length ? `<h2 style="margin:14px 0 4px;font-size:17px">Needs you <span class="n">${h.alerts.length}</span></h2>` + h.alerts.map(halert).join('') : '';
+    const sy = h.system;
+    const sys = !sy ? '' : sy.n
+      ? `<details class="sysfix"${sysOpen ? ' open' : ''} ontoggle="sysOpen=this.open"><summary>System self-repair: ${plural(sy.n, 'item')} · NW2-Build handles these at 13:00 and 22:00</summary>${sy.checks.map(hrow).join('')}${sy.alerts.map(halert).join('')}</details>`
+      : '<div class="sysfix">System self-repair: nothing pending</div>';
+    return rows + al + sys;
   },
   // 接下來 7 天（每天件數）＋之後的
   week: (v) => `<section><h2 style="margin:0 0 10px;font-size:19px">Next 7 Days</h2><div class="week">${v.week.map((w) => `<div class="day${w.n ? ' busy' : ''}"><div class="d">${shortDay(w.date)}</div><div class="c">${w.n}</div></div>`).join('')}</div>
@@ -806,6 +823,11 @@ function tick() {
   $('date').textContent = `${WDL[c.wd]}, ${MON[c.mon - 1]} ${c.day}`;
   $('tz').innerHTML = `Taipei <b>${String(+tp.hour % 24).padStart(2, '0')}:${tp.minute}</b> · ${tp.weekday}`;
   const st = $('status');
+  if (data) { // handoff count (dash-d12, work order 65b35188): yellow, apart from the system light; hidden when none
+    const sw = data.spawn_warn || [];
+    $('swchip').style.display = sw.length ? '' : 'none';
+    $('swchip').textContent = sw.length ? `${sw[0].role} · ${sw[0].n} handoffs/7d${sw.length > 1 ? ` +${sw.length - 1}` : ''}` : '';
+  }
   if (data) { const q = data.questions.total; $('qchip').innerHTML = q ? `Questions <b>${q}</b>` : 'No questions'; $('qchip').style.color = q ? '' : 'var(--sub)'; }
   if (data) {
     const syncMin = data.synced_at ? Math.round((Date.now() - Date.parse(data.synced_at)) / 60000) : null;
@@ -1049,8 +1071,9 @@ function openHealth(kind = panelKind) {
   panelKind = kind;
   const v = derive(data);
   const cds = cdSort(v.notices?.countdowns || []);
-  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : 'System Health';
-  $('healthBody').innerHTML = kind === 'budget' ? budgetPanel()
+  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : kind === 'spawn' ? 'Frequent Handoffs' : 'System Health';
+  $('healthBody').innerHTML = kind === 'spawn' ? ((data.spawn_warn || []).map((r) => `<div class="halert"><div class="t" style="font-size:16px;color:var(--warn)">${esc(r.role)} handed off ${r.n} times in 7 days</div><div class="m" style="margin-top:4px">Its way of working may need a look — talk to it.${r.last_at ? ` Last handoff ${esc(new Date(String(r.last_at).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))}.` : ''}</div></div>`).join('') || '<div class="empty">No frequent handoffs</div>') + '<div class="m" style="padding-top:10px">Shown when a chat starts more than 3 new versions in 7 days. Separate from the system light.</div>'
+    : kind === 'budget' ? budgetPanel()
     : kind === 'countdowns' ? (cds.map((c) => `<div class="bdrow"><span><b style="display:inline-block;min-width:64px;color:${c.days_left === 0 ? 'var(--bad)' : c.days_left <= 3 ? 'var(--warn)' : 'inherit'}">${c.days_left === 0 ? 'Today' : c.days_left === 1 ? '1 day' : `${c.days_left} days`}</b>${esc(c.title)}${c.source === 'ai' ? ' <span class="aitag">AI pick</span>' : ''}${c.source === 'ai' && c.pick_reason ? `<div class="m" style="margin:3px 0 0 64px">${esc(c.pick_reason)}</div>` : ''}</span><span class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</span></div>`).join('') + '<div class="m" style="padding-top:12px">New dates go in via NW2-Inbox or NW2-Build. AI picks fill free slots; NW2-Ask will ask whether to keep them.</div>')
     : kind === 'overdue'
     ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
@@ -1095,6 +1118,7 @@ document.addEventListener('click', (e) => {
   if (b.id === 'fs') { toggleFs(); return; }
   if (b.id === 'off-btn') { setScreenOff(true); return; }
   if (b.id === 'status') { openHealth('health'); return; }
+  if (b.id === 'swchip') { openHealth('spawn'); return; }
   if (b.id === 'qchip') { openHealth('questions'); return; }
   if (b.id === 'budbtn') { openHealth('budget'); return; }
   if (b.id === 'rchip') { openRitual(curMode() === 'morning' ? 'morning' : 'evening'); return; }
