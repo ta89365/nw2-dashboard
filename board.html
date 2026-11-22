@@ -776,12 +776,14 @@ Object.assign(BLOCKS, {
     const meals = tmr ? p.meals_tmrw : p.meals_today;
     const thaw = tmr ? p.thaw_tonight : [];
     if (!meals.length && !thaw.length) return '';
-    const row = (m) => `<div class="meal${m.out ? ' out' : ''}"><div class="ml">${esc(m.meal)}</div><div class="md" title="${esc(m.description)}">${esc(m.description)}</div>${m.quick ? '<span class="quick">Quick</span>' : ''}</div>`;
+    // dash-d16 (Ben 11/22): the board shows the short English title (title_en from Pantry); Chinese only in the tap-to-open panel.
+    // Until Pantry fills title_en the description is shown instead.
+    const row = (m) => `<div class="meal${m.out ? ' out' : ''}"><div class="ml">${esc(m.meal)}</div><div class="md"${m.title_en ? ' lang="en"' : ''}>${esc(m.title_en || m.description)}</div>${m.quick ? '<span class="quick">Quick</span>' : ''}</div>`;
     // Tonight's moves (red heading, one line): "Move tonight · 21:30 · Freezer → Fridge" + the items; Ben's phone rings at the same time.
     const route = thaw.length && thaw.every((t) => t.from === thaw[0].from && t.to === thaw[0].to) && thaw[0].from && thaw[0].to ? ` · ${esc(thaw[0].from)} → ${esc(thaw[0].to)}` : '';
     const mv = thaw.length ? `<div class="thaw"><div class="mg">Move tonight${thaw[0].time ? ` · ${thaw[0].time}` : ''}${route}</div><div class="mi">${thaw.map((t) => esc(t.item) + (route || !(t.from && t.to) ? '' : ` (${esc(t.from)} → ${esc(t.to)})`)).join(' · ')}</div></div>` : '';
     const low = p.backup?.low ? `<div class="m backup">Backup low · tier1 ${p.backup.tier1}${p.backup.min ? ` of ${p.backup.min}` : ''}</div>` : '';
-    return `<section class="card fixed meals" style="padding:14px 20px 12px"><h2 style="font-size:17px;margin-bottom:4px">${tmr ? `Meals · ${shortDay(v.tomorrow)}` : 'Meals today'} <span class="n">${meals.length}</span></h2>${meals.map(row).join('') || '<div class="empty" style="padding:6px 0">Not planned yet</div>'}${mv}${low}</section>`;
+    return `<section class="card fixed meals" data-day="${tmr ? 1 : 0}" style="padding:14px 20px 12px;cursor:pointer" title="Tap for details"><h2 style="font-size:17px;margin-bottom:4px">${tmr ? `Meals · ${shortDay(v.tomorrow)}` : 'Meals today'} <span class="n">${meals.length}</span></h2>${meals.map(row).join('') || '<div class="empty" style="padding:6px 0">Not planned yet</div>'}${mv}${low}</section>`;
   },
   // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
   fyi: (v, o) => {
@@ -1161,10 +1163,11 @@ function openHealth(kind = panelKind) {
   panelKind = kind;
   const v = derive(data);
   const cds = cdSort(v.notices?.countdowns || []);
-  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : kind === 'spawn' ? 'Frequent Handoffs' : kind === 'shopping' ? `Shopping · ${(data.notices?.pantry?.shopping || []).length}` : 'System Health';
+  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : kind === 'spawn' ? 'Frequent Handoffs' : kind === 'shopping' ? `Shopping · ${(data.notices?.pantry?.shopping || []).length}` : kind === 'meals' ? (mealsDay ? `Meals · ${shortDay(v.tomorrow)}` : 'Meals today') : 'System Health';
   $('healthBody').innerHTML = kind === 'spawn' ? ((data.spawn_warn || []).map((r) => `<div class="halert"><div class="t" style="font-size:16px;color:var(--warn)">${esc(r.role)} handed off ${r.n} times in 7 days</div><div class="m" style="margin-top:4px">Its way of working may need a look — talk to it.${r.last_at ? ` Last handoff ${esc(new Date(String(r.last_at).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))}.` : ''}</div></div>`).join('') || '<div class="empty">No frequent handoffs</div>') + '<div class="m" style="padding-top:10px">Shown when a chat starts more than 3 new versions in 7 days. Separate from the system light.</div>'
     : kind === 'budget' ? budgetPanel()
     : kind === 'shopping' ? shoppingPanel()
+    : kind === 'meals' ? mealsPanel()
     : kind === 'countdowns' ? (cds.map((c) => `<div class="bdrow"><span><b style="display:inline-block;min-width:64px;color:${c.days_left === 0 ? 'var(--bad)' : c.days_left <= 3 ? 'var(--warn)' : 'inherit'}">${c.days_left === 0 ? 'Today' : c.days_left === 1 ? '1 day' : `${c.days_left} days`}</b>${esc(c.title)}${c.source === 'ai' ? ' <span class="aitag">AI pick</span>' : ''}${c.source === 'ai' && c.pick_reason ? `<div class="m" style="margin:3px 0 0 64px">${esc(c.pick_reason)}</div>` : ''}</span><span class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</span></div>`).join('') + '<div class="m" style="padding-top:12px">New dates go in via NW2-Inbox or NW2-Build. AI picks fill free slots; NW2-Ask will ask whether to keep them.</div>')
     : kind === 'overdue'
     ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
@@ -1173,6 +1176,20 @@ function openHealth(kind = panelKind) {
     ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
     : BLOCKS.health(v) + '<div class="detailsRow"><button class="btn primary" id="healthDetails" type="button">Details</button><span class="m">Spending, 7:45 acceptance, run history, alerts</span></div>';
   $('healthPanel').style.display = 'flex';
+}
+// Meals detail (dash-d16, Ben 11/22: 看板上英文簡寫，點進去看中文細節——退冰、順序、先煮飯之類): one block per meal with the Chinese
+// detail (detail_zh from Pantry; the plain description until Pantry adds it), then tonight's moves and the backup stock. Read-only.
+let mealsDay = 0;
+function mealsPanel() {
+  const p = data.notices?.pantry; if (!p) return '<div class="empty">No meal plan right now</div>';
+  const meals = mealsDay ? p.meals_tmrw : p.meals_today;
+  const thaw = p.thaw_tonight || [];
+  const block = (m) => `<div class="halert"><div class="t" style="font-size:16px;display:flex;gap:10px;align-items:baseline"><span class="ml" style="flex:none;width:80px;font-size:11.5px;font-weight:700;color:var(--sub);letter-spacing:.05em;text-transform:uppercase">${esc(m.meal)}</span><span${m.title_en ? ' lang="en"' : ''}>${esc(m.title_en || m.description)}</span>${m.quick ? '<span class="quick" style="flex:none;font-size:11px;font-weight:700;color:var(--good);background:#DDF2E5;border-radius:6px;padding:1px 6px">Quick</span>' : ''}${m.out ? '<span class="aitag">Out</span>' : ''}</div>
+    <div class="m" style="margin:4px 0 0 90px;white-space:pre-line;font-size:15px;color:var(--ink)">${esc(m.detail_zh || (m.title_en ? m.description : ''))}${m.prep_min ? `<div class="m" style="margin-top:2px">~${m.prep_min} min</div>` : ''}</div></div>`;
+  const mv = thaw.length ? `<div class="fy-g" style="color:var(--bad)">Move tonight${thaw[0].time ? ` · ${thaw[0].time}` : ''}</div>` + thaw.map((t) => `<div class="shrow"><span class="qty" style="min-width:0">${t.from && t.to ? `${esc(t.from)} → ${esc(t.to)}` : 'Move'}</span><span class="it">${esc(t.item)}</span></div>`).join('') : '';
+  const bk = p.backup ? `<div class="m" style="padding-top:10px">Backup stock · tier1 ${p.backup.tier1}${p.backup.min ? ` of ${p.backup.min}` : ''}${p.backup.low ? ' · <b style="color:var(--warn)">low</b>' : ''}</div>` : '';
+  return (meals.length ? meals.map(block).join('') : '<div class="empty">Not planned yet</div>') + mv + bk
+    + '<div class="m" style="padding-top:12px">From Pantry\'s meal plan. Change it in Pantry-Ask or Kitchen.</div>';
 }
 // Shopping list (dash-d14): read-only, grouped by store, urgent first. Routes / lanes come later (Pantry × NW2 step 3).
 function shoppingPanel() {
@@ -1212,6 +1229,7 @@ function showLogin(msg) { $('login').style.display = 'flex'; if (msg) toast(msg)
 $('loginForm').addEventListener('submit', (e) => { e.preventDefault(); key = $('key').value.trim(); store.set('nw2.key', key); $('login').style.display = 'none'; load(); });
 document.addEventListener('click', (e) => {
   if (e.target.closest('.cds')) { openHealth('countdowns'); return; }
+  const mc = e.target.closest('.meals'); if (mc && !e.target.closest('button')) { mealsDay = +mc.dataset.day || 0; openHealth('meals'); return; }
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.mode) { mode = b.dataset.mode; store.set('nw2.mode', mode); render(); return; }
   if (b.id === 'fs') { toggleFs(); return; }
