@@ -123,6 +123,9 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .stack>.card{flex:1 1 0;min-height:0}
 .stack>.fixed{flex:none}
 .stack>.auto,.stack>.col.auto{flex:0 1 auto;min-height:0}
+.stack>.auto>.list,.stack>.col.auto>.list{min-height:104px} /* at least ~2 rows stay visible; more scrolls */
+.tmr.unf{padding-top:6px}
+.tmr.unf .un{padding:4px 0;border-top:none}
 /* header stats (Ben 2026-10-28); sizes and spacing now set by header v3 (.hC) below */
 .stats{flex:1;display:flex;justify-content:center;align-items:flex-end;padding:0;min-width:0}
 .stat{padding:2px 9px;border-left:1px solid var(--line);min-width:min-content}
@@ -165,6 +168,10 @@ button.stat .l{text-decoration:underline dotted;text-underline-offset:3px}
 .dayrow.z .dn,.dayrow.z .ct{color:var(--sub)}
 .prow{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);align-items:flex-start}
 .prow .t{font-size:16px}
+.un{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line)}
+.un:first-of-type{border-top:none}
+.un .t{font-size:15px;min-width:0}
+.un .badge{min-width:0;padding:2px 7px;font-size:12px}
 .wkstrip{display:flex;gap:6px;margin:0 0 8px;font-size:12.5px;color:var(--sub)}
 .wkstrip span{flex:1;text-align:center;background:var(--chip);border-radius:8px;padding:4px 0;line-height:1.2}
 .wkstrip span b{display:block;font-family:'Space Grotesk',sans-serif;font-size:15px;color:var(--ink)}
@@ -610,11 +617,15 @@ const T = { // 常用的積木設定，各版面共用
 const LAYOUTS = {
   compact: {
     // Ben 2026-10-28: weather + schedule | FYI | To-Do + Follow-Ups (Questions moved to the header chip)
-    morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'countdowns', 'timeline'] }, { cls: 'stack', items: ['meals', 'fyi'] }, { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
+    // dash-d20 (Pantry × NW2 §2d, Ben 11/22): widths follow the day — a light schedule (≤ 3) gives the Meals column more room;
+    // the blank under the schedule holds "Up next" (tonight's moves, tomorrow's first thing). Heads-up (FYI) is its own card.
+    morning: { cls: 'grid3a', style: (v) => `grid-template-columns:${v.sched.length <= 3 ? 'minmax(0,3.4fr) minmax(0,5.6fr) minmax(0,4fr)' : 'minmax(0,4.6fr) minmax(0,4.4fr) minmax(0,4fr)'}`,
+      items: [{ cls: 'stack', items: ['weather', 'timeline'] }, { cls: 'stack', items: ['meals', 'fyi', 'countdowns'] }, { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
     // Ben 2026-10-28: Schedule column added, No Date kept
-    work: { cls: 'grid5', items: [{ cls: 'stack', style: 'gap:12px', items: ['countdowns', 'colSched', 'meals'] }, T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
+    work: { cls: 'grid5', style: (v) => `grid-template-columns:minmax(0,${v.sched.length <= 3 ? 1.3 : 1}fr) repeat(4,minmax(0,1fr))`,
+      items: [{ cls: 'stack', style: 'gap:12px', items: ['colSched', 'meals'] }, T.colToday, T.colFollow, T.colWaiting, { cls: 'stack', style: 'gap:12px', items: [T.colUndated, 'countdowns'] }] },
     // Ben 2026-10-28: evening = wrap up today | plan tomorrow (weather, schedule, tasks) | the rest of the week
-    evening: { cls: 'grid3a', items: [T.leftToday, { cls: 'stack', items: [{ block: 'weather', day: 1 }, { block: 'meals', day: 1 }, 'tmrPlan'] }, { cls: 'stack', items: ['countdowns', 'coming'] }] },
+    evening: { cls: 'grid3a', items: [T.leftToday, { cls: 'stack', items: [{ block: 'weather', day: 1 }, { block: 'meals', day: 1 }, 'tmrPlan'] }, { cls: 'stack', items: ['headsUp', 'countdowns', 'coming'] }] },
   },
 };
 // 還沒設計的版面先沿用 compact（之後一種一種定）
@@ -677,6 +688,18 @@ const FYG = { today: 'Today', new: 'New', upcoming: 'Coming Up' };
 const fyBadge = (f) => f.group === 'today' ? '<span class="badge today">Today</span>' : f.group === 'new' ? '<span class="badge new">New</span>'
   : `<span class="badge">${f.due_date ? shortDay(f.due_date) : 'Later'}</span>`;
 const schedTime = (s) => s.all_day ? 'All day' : s.start;
+// Up next (dash-d20, Ben 11/22: fill the blank under a light schedule): tonight's freezer→fridge moves, tomorrow's first
+// meeting / timed task, tomorrow's breakfast — one line each, shown as the Schedule card's footer.
+function upNextLines(v) {
+  const p = v.notices?.pantry; const lines = [];
+  const thaw = p?.thaw_tonight || [];
+  if (thaw.length) lines.push(`<div class="un"><span class="badge today">Tonight${thaw[0].time ? ` ${thaw[0].time}` : ''}</span><div class="t c1">Move ${thaw.map((t) => esc(t.item)).join(' · ')}${thaw[0].from && thaw[0].to ? ` <span class="m">${esc(thaw[0].from)} → ${esc(thaw[0].to)}</span>` : ''}</div></div>`);
+  const first = v.tmrSched[0];
+  if (first) lines.push(`<div class="un"><span class="badge">Tomorrow</span><div class="t c1">${first.all_day ? 'All day' : esc(first.start)} ${esc(first.title)}${v.tmrSched.length > 1 ? ` <span class="m">+${v.tmrSched.length - 1}</span>` : ''}</div></div>`);
+  const bf = (p?.meals_tmrw || []).find((m) => m.meal === 'Breakfast');
+  if (bf) lines.push(`<div class="un"><span class="badge">Breakfast</span><div class="t c1"${bf.title_en ? ' lang="en"' : ''}>${esc(bf.title_en || bf.description)}</div></div>`);
+  return lines;
+}
 
 Object.assign(BLOCKS, {
   // Weather: now (or tomorrow's forecast with o.day = 1), high/low, umbrella hint, hourly chance-of-rain chart
@@ -740,7 +763,8 @@ Object.assign(BLOCKS, {
         ${s.page_id ? checkBtn(s.page_id, 'sm') : ''}</div>`);
     }
     if (!lined) rows.push(nowLine);
-    const tmr = v.tmrMeet.length ? `<div class="tmr">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}${v.tmrMeet.length > 2 ? ` +${v.tmrMeet.length - 2} more` : ''}</div>` : '';
+    const un = upNextLines(v);
+    const tmr = un.length ? `<div class="tmr unf">${un.join('')}</div>` : '';
     return `<section class="card auto"><h2>Schedule <span class="n">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings or timed reminders today</div>'}</div>${tmr}</section>`;
   },
   // Work mode: today's schedule as a column (meetings + timed tasks, red Now line; finished ones fade)
@@ -755,7 +779,8 @@ Object.assign(BLOCKS, {
         <div style="min-width:0;flex:1"><div class="t">${esc(s.title)}${live}</div>${s.sub ? `<div class="m">${esc(s.sub)}</div>` : ''}${late}</div></div>`);
     }
     if (!lined) rows.push(nowLine);
-    const tmr = v.tmrMeet.length ? `<div class="m" style="padding:4px 4px 0">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}</div>` : '';
+    const un = upNextLines(v);
+    const tmr = un.length ? `<div class="tmr unf">${un.join('')}</div>` : '';
     return `<section class="col auto"><h2>Schedule<span class="num">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings today</div>'}</div>${tmr}</section>`;
   },
   // Evening: tomorrow at a glance — schedule (meetings + timed tasks), the other tasks, heads-ups dated tomorrow
@@ -779,10 +804,17 @@ Object.assign(BLOCKS, {
     const days = [...byDay.entries()].map(([d, ts]) => `<div class="fy-g">${shortDay(d)} · ${ts.length}</div>${ts.map(row).join('')}`).join('');
     const strip = `<div class="wkstrip">${v.week.map((w) => `<span class="${w.n ? '' : 'z'}">${shortDay(w.date).slice(0, 3)}<b>${w.n}</b></span>`).join('')}</div>`;
     const later = v.later.map((t) => `<div class="prow"><span class="badge">${shortDay(t.do_date || t.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(t.title)}</div>${t.project ? `<div class="m c1">${esc(t.project)}</div>` : ''}</div></div>`).join('');
-    const heads = v.fyiLater.map((f) => `<div class="prow"><span class="badge">${shortDay(f.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join('');
     return `<section class="card"><h2>Coming Up <span class="n">${upc.length}</span></h2>${strip}<div class="list">${days || '<div class="empty" style="padding:6px 0 10px">Nothing else this week</div>'}
-      ${later ? `<div class="fy-g">Later</div>${later}` : ''}${heads ? `<div class="fy-g">Heads-up</div>${heads}` : ''}</div></section>`;
+      ${later ? `<div class="fy-g">Later</div>${later}` : ''}</div></section>`;
   },
+  // Heads-up (dash-d20, Ben 11/22: keep it apart from the schedule, pinned at the top): evening = FYI dated tomorrow or later.
+  headsUp: (v) => {
+    const items = [...v.fyiTmr, ...v.fyiLater]; if (!items.length) return '';
+    const rows = items.slice(0, 5).map((f) => `<div class="prow"><span class="badge">${f.due_date === v.tomorrow ? 'Tomorrow' : shortDay(f.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join('');
+    return `<section class="card fixed" style="padding:16px 20px 10px"><h2 style="font-size:17px;margin-bottom:4px">Heads-up <span class="n">${items.length}</span></h2>${rows}${items.length > 5 ? `<div class="m" style="padding-top:6px">+${items.length - 5} more</div>` : ''}</section>`;
+  },
+  // Up next (dash-d20, Ben 11/22): standalone card version of the Schedule footer lines (kept for layouts without a Schedule).
+  upNext: (v) => { const lines = upNextLines(v); return lines.length ? `<section class="card fixed" style="padding:14px 20px 10px"><h2 style="font-size:17px;margin-bottom:2px">Up next</h2>${lines.join('')}</section>` : ''; },
   // Countdowns (dash-d5): filing days, trips… Empty → nothing rendered.
   countdowns: (v) => {
     const cds = cdSort(v.notices?.countdowns || []); if (!cds.length) return '';
@@ -837,7 +869,8 @@ for (const k of ['desk', 'tall', 'narrow', 'tv']) LAYOUTS[k] ??= LAYOUTS.compact
 function build(node, v) {
   if (typeof node === 'string') return BLOCKS[node](v, {});
   if (node.block) return BLOCKS[node.block](v, node);
-  return `<div${node.cls ? ` class="${node.cls}"` : ''}${node.style ? ` style="${node.style}"` : ''}>${node.items.map((n) => build(n, v)).join('')}</div>`;
+  const st = typeof node.style === 'function' ? node.style(v) : node.style;
+  return `<div${node.cls ? ` class="${node.cls}"` : ''}${st ? ` style="${st}"` : ''}>${node.items.map((n) => build(n, v)).join('')}</div>`;
 }
 
 // 判斷這個畫面用哪種版面
