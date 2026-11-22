@@ -325,6 +325,19 @@ body.night .meals .quick{background:#1C3A2A}
 .meals .thaw .mg{font-size:12.5px;font-weight:700;color:var(--bad);letter-spacing:.05em;padding:2px 0 2px}
 .meals .thaw .mi{font-size:14.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .meals .backup{padding-top:6px;font-size:13px}
+/* 2d meal report (dash-d19) */
+.meals .mbtns{flex:none;display:flex;gap:6px}
+.meals .mb{height:34px;min-width:38px;padding:0 9px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-weight:700;line-height:1}
+.meals .mb.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent)}
+.meals .mb.no{color:var(--sub);font-size:13px}
+.meals .mb.alt{color:var(--sub)}
+.meals .mrep{flex:none;color:var(--good);font-weight:700;font-size:15px;max-width:48%;display:flex;gap:6px;align-items:baseline;min-width:0}
+.meals .mrep .ma{color:var(--sub);font-weight:400;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meals .meal.done .md{color:var(--sub)}
+.meals .mrf{flex:1;display:flex;gap:6px;min-width:0}
+.meals .mrf input{flex:1;min-width:0;height:36px;border:1px solid var(--line);border-radius:9px;padding:0 10px;font:inherit;font-size:15px;background:var(--card);color:var(--ink)}
+.meals .mrf .btn{height:36px;padding:0 10px;font-size:14px}
+@container (max-width:300px){ .meals .mbtns{order:2} .meals .mrep{order:2;max-width:none} .meals .mrf{order:3;grid-column:1/-1} }
 .meals{container-type:inline-size}
 /* narrow column (work mode Schedule column): meal name on its own line, dish below it */
 @container (max-width:300px){ .meals .meal{display:grid;grid-template-columns:1fr auto;gap:1px 8px;align-items:center} .meals .ml{width:auto;order:1} .meals .quick{order:2} .meals .md{order:3;grid-column:1/-1} }
@@ -790,12 +803,22 @@ Object.assign(BLOCKS, {
     if (!meals.length && !thaw.length) return '';
     // dash-d16 (Ben 11/22): the board shows the short English title (title_en from Pantry); Chinese only in the tap-to-open panel.
     // Until Pantry fills title_en the description is shown instead.
-    const row = (m) => `<div class="meal${m.out ? ' out' : ''}"><div class="ml">${esc(m.meal)}</div><div class="md"${m.title_en ? ' lang="en"' : ''}>${esc(m.title_en || m.description)}</div>${m.quick ? '<span class="quick">Quick</span>' : ''}</div>`;
+    // 2d (dash-d19, Ben 11/22): today's meals get a report — ✓ ate as planned, ≠ ate something else (opens a small text box),
+    // Snack also gets "No" (skipped). Reported meals show ✓ / actual in grey and no buttons. Tomorrow's meals: no buttons.
+    const rpt = (m) => {
+      if (tmr) return '';
+      if (m.reported) return `<span class="mrep">✓${m.actual && m.actual !== m.description ? ` <span class="ma">${esc(m.actual)}</span>` : ''}</span>`;
+      const k = `${v.today}|${m.meal}`;
+      if (mealEdit === k) return `<form class="mrf" data-meal="${esc(m.meal)}"><input type="text" maxlength="200" placeholder="What did you eat?" autocomplete="off"><button class="btn primary" type="submit">Send</button><button class="btn" type="button" data-mcancel="1">✕</button></form>`;
+      return `<span class="mbtns"><button class="mb ok" type="button" data-mrep="ate" data-meal="${esc(m.meal)}" title="Ate as planned">✓</button>${m.meal === 'Snack' ? `<button class="mb no" type="button" data-mrep="skip" data-meal="${esc(m.meal)}" title="Skipped">No</button>` : ''}<button class="mb alt" type="button" data-mrep="edit" data-meal="${esc(m.meal)}" title="Ate something else">≠</button></span>`;
+    };
+    const editing = (m) => !tmr && mealEdit === `${v.today}|${m.meal}`;
+    const row = (m) => `<div class="meal${m.out ? ' out' : ''}${m.reported ? ' done' : ''}"><div class="ml">${esc(m.meal)}</div>${editing(m) ? '' : `<div class="md"${m.title_en ? ' lang="en"' : ''}>${esc(m.title_en || m.description)}</div>${m.quick && !m.reported ? '<span class="quick">Quick</span>' : ''}`}${rpt(m)}</div>`;
     // Tonight's moves (red heading, one line): "Move tonight · 21:30 · Freezer → Fridge" + the items; Ben's phone rings at the same time.
     const route = thaw.length && thaw.every((t) => t.from === thaw[0].from && t.to === thaw[0].to) && thaw[0].from && thaw[0].to ? ` · ${esc(thaw[0].from)} → ${esc(thaw[0].to)}` : '';
     const mv = thaw.length ? `<div class="thaw"><div class="mg">Move tonight${thaw[0].time ? ` · ${thaw[0].time}` : ''}${route}</div><div class="mi">${thaw.map((t) => esc(t.item) + (route || !(t.from && t.to) ? '' : ` (${esc(t.from)} → ${esc(t.to)})`)).join(' · ')}</div></div>` : '';
     const low = p.backup?.low ? `<div class="m backup">Backup low · tier1 ${p.backup.tier1}${p.backup.min ? ` of ${p.backup.min}` : ''}</div>` : '';
-    return `<section class="card fixed meals" data-day="${tmr ? 1 : 0}" style="padding:14px 20px 12px;cursor:pointer" title="Tap for details"><h2 style="font-size:17px;margin-bottom:4px">${tmr ? `Meals · ${shortDay(v.tomorrow)}` : 'Meals today'} <span class="n">${meals.length}</span></h2>${meals.map(row).join('') || '<div class="empty" style="padding:6px 0">Not planned yet</div>'}${mv}${low}</section>`;
+    return `<section class="card fixed meals${tmr ? '' : ' today'}" data-day="${tmr ? 1 : 0}" style="padding:14px 20px 12px;cursor:pointer" title="Tap for details"><h2 style="font-size:17px;margin-bottom:4px">${tmr ? `Meals · ${shortDay(v.tomorrow)}` : 'Meals today'} <span class="n">${meals.length}</span></h2>${meals.map(row).join('') || '<div class="empty" style="padding:6px 0">Not planned yet</div>'}${mv}${low}</section>`;
   },
   // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
   fyi: (v, o) => {
@@ -851,7 +874,9 @@ function render() {
   if (!data) { if (!main.innerHTML) main.innerHTML = '<div class="skel"><div></div><div></div><div></div></div>'; return; }
   const v = derive(data);
   const paint = () => {
+    const keepTyped = main.querySelector('form.mrf input')?.value; // 2d: a meal text box survives the 10-min re-render
     $('stats').innerHTML = BLOCKS.stats(v); main.innerHTML = build(LAYOUTS[lay][m], v); tickNumbers();
+    if (keepTyped) { const i = main.querySelector('form.mrf input'); if (i) i.value = keepTyped; }
     // First time a mode is shown after loading: the first row of each list peeks right (shows the Done colour) and settles back.
     // (Delayed a bit so the weather/AQI re-renders that follow the first paint don't cut it short.)
     if (!peeked.has(m)) { peeked.add(m); setTimeout(() => { if (curMode() === m) main.querySelectorAll('.list').forEach((l) => l.querySelector('[data-key^="t:"]')?.classList.add('peek')); }, 1500); }
@@ -1203,6 +1228,24 @@ function mealsPanel() {
   return (meals.length ? meals.map(block).join('') : '<div class="empty">Not planned yet</div>') + mv + bk
     + '<div class="m" style="padding-top:12px">From Pantry\'s meal plan. Change it in Pantry-Ask or Kitchen.</div>';
 }
+// 2d meal report (dash-d19): POST {action:'pantry_report', date, meal, ate, text} → pantry.report_meal (via public wrapper).
+// Immediate (no undo window): the pantry side keeps the latest report per meal, so a wrong tap is fixed by reporting again
+// from the panel in Pantry-Ask. After a 200 the feed is re-fetched so the row shows ✓.
+let mealEdit = null; // "<date>|<meal>" of the row whose text box is open
+async function reportMeal(meal, ate, text) {
+  if (!data) return;
+  const date = data.today; const label = `${meal} ${ate ? '✓' : text ? '≠' : 'skipped'}`;
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'x-nw2-dash': key, 'content-type': 'application/json' }, body: JSON.stringify({ action: 'pantry_report', date, meal, ate, text: text || null }) });
+    const out = await r.json().catch(() => ({}));
+    if (r.ok && out.ok) { mealEdit = null; toast(`Logged · ${label}${out.status === 'Changed' ? ' · noted for tonight' : ''}`, 3000); load(); return; }
+    toast(out.error === 'bad_report' ? "Can't log that one (today's meals only)." : `Didn't go through${out.error ? ` (${esc(String(out.error)).slice(0, 60)})` : ''}. Try again in a bit.`, 4000);
+  } catch { toast("Can't reach NW2"); }
+}
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('form.mrf'); if (!f) return; e.preventDefault();
+  const t = f.querySelector('input').value.trim(); if (!t) return; reportMeal(f.dataset.meal, true, t);
+});
 // Shopping list (dash-d14): read-only, grouped by store, urgent first. Routes / lanes come later (Pantry × NW2 step 3).
 function shoppingPanel() {
   const sh = data.notices?.pantry?.shopping || []; if (!sh.length) return '<div class="empty">Nothing on the list</div>';
@@ -1241,7 +1284,11 @@ function showLogin(msg) { $('login').style.display = 'flex'; if (msg) toast(msg)
 $('loginForm').addEventListener('submit', (e) => { e.preventDefault(); key = $('key').value.trim(); store.set('nw2.key', key); $('login').style.display = 'none'; load(); });
 document.addEventListener('click', (e) => {
   if (e.target.closest('.cds')) { openHealth('countdowns'); return; }
-  const mc = e.target.closest('.meals'); if (mc && !e.target.closest('button')) { mealsDay = +mc.dataset.day || 0; openHealth('meals'); return; }
+  const mb = e.target.closest('[data-mrep]');
+  if (mb) { const meal = mb.dataset.meal; if (mb.dataset.mrep === 'ate') reportMeal(meal, true, null); else if (mb.dataset.mrep === 'skip') reportMeal(meal, false, null);
+    else { mealEdit = `${data.today}|${meal}`; render(); setTimeout(() => document.querySelector('form.mrf input')?.focus(), 50); } return; }
+  if (e.target.closest('[data-mcancel]')) { mealEdit = null; render(); return; }
+  const mc = e.target.closest('.meals'); if (mc && !e.target.closest('button,form,input')) { mealsDay = +mc.dataset.day || 0; openHealth('meals'); return; }
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.mode) { mode = b.dataset.mode; store.set('nw2.mode', mode); render(); return; }
   if (b.id === 'fs') { toggleFs(); return; }
