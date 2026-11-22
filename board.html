@@ -755,14 +755,13 @@ Object.assign(BLOCKS, {
   },
   // Evening: the rest of the week (tasks per day as bars), later dated tasks, later heads-ups — one item per row
   // Evening: the rest of the week as the tasks themselves, grouped by day (dash-d17, Ben 11/22: the per-day count bars were clutter);
-  // then later dated tasks and later heads-ups — one item per row. COMING_STRIP adds a one-line "Tue 2 · Thu 3" summary on top.
+  // then later dated tasks and later heads-ups — one item per row. Ben picked B (11/22): a one-line per-day count strip stays on top.
   coming: (v) => {
-    const COMING_STRIP = new URLSearchParams(location.search).get('strip') === '1';
     const upc = v.upcoming || []; const byDay = new Map();
     upc.forEach((t) => { const d = t.do_date || t.due_date; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(t); });
     const row = (t) => `<div class="prow"${t.page_id ? ` data-key="t:${t.page_id}"` : ''}><span class="badge" style="min-width:0;padding:3px 7px">${t.time || (t.state === 'Waiting' ? 'Follow up' : 'To-Do')}</span><div style="min-width:0"><div class="t c1">${cleanTitle(t.title)}</div>${t.project ? `<div class="m c1">${esc(t.project.split(' - ')[0])}</div>` : ''}</div></div>`;
     const days = [...byDay.entries()].map(([d, ts]) => `<div class="fy-g">${shortDay(d)} · ${ts.length}</div>${ts.map(row).join('')}`).join('');
-    const strip = COMING_STRIP ? `<div class="wkstrip">${v.week.map((w) => `<span class="${w.n ? '' : 'z'}">${shortDay(w.date).slice(0, 3)}<b>${w.n}</b></span>`).join('')}</div>` : '';
+    const strip = `<div class="wkstrip">${v.week.map((w) => `<span class="${w.n ? '' : 'z'}">${shortDay(w.date).slice(0, 3)}<b>${w.n}</b></span>`).join('')}</div>`;
     const later = v.later.map((t) => `<div class="prow"><span class="badge">${shortDay(t.do_date || t.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(t.title)}</div>${t.project ? `<div class="m c1">${esc(t.project)}</div>` : ''}</div></div>`).join('');
     const heads = v.fyiLater.map((f) => `<div class="prow"><span class="badge">${shortDay(f.due_date)}</span><div style="min-width:0"><div class="t c1">${esc(f.title)}</div><div class="m c1">${esc(f.detail)}</div></div></div>`).join('');
     return `<section class="card"><h2>Coming Up <span class="n">${upc.length}</span></h2>${strip}<div class="list">${days || '<div class="empty" style="padding:6px 0 10px">Nothing else this week</div>'}
