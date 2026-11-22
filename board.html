@@ -326,6 +326,7 @@ body.night #toast button{color:#2457D6}
 .meals .ml{flex:none;width:80px;font-size:11.5px;font-weight:700;color:var(--sub);letter-spacing:.05em;text-transform:uppercase;line-height:1.35}
 .meals .md{flex:1;font-size:14.5px;line-height:1.35;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meals .out .md{color:var(--sub)}
+.meals .md .pm{color:var(--sub);font-size:12.5px}
 .meals .quick{flex:none;font-size:11px;font-weight:700;color:var(--good);background:#DDF2E5;border-radius:6px;padding:1px 6px;line-height:16px}
 body.night .meals .quick{background:#1C3A2A}
 .meals .thaw{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
@@ -843,7 +844,7 @@ Object.assign(BLOCKS, {
       return `<span class="mbtns"><button class="mb ok" type="button" data-mrep="ate" data-meal="${esc(m.meal)}" title="Ate as planned">✓</button>${m.meal === 'Snack' ? `<button class="mb no" type="button" data-mrep="skip" data-meal="${esc(m.meal)}" title="Skipped">No</button>` : ''}<button class="mb alt" type="button" data-mrep="edit" data-meal="${esc(m.meal)}" title="Ate something else">≠</button></span>`;
     };
     const editing = (m) => !tmr && mealEdit === `${v.today}|${m.meal}`;
-    const row = (m) => `<div class="meal${m.out ? ' out' : ''}${m.reported ? ' done' : ''}"><div class="ml">${esc(m.meal)}</div>${editing(m) ? '' : `<div class="md"${m.title_en ? ' lang="en"' : ''}>${esc(m.title_en || m.description)}</div>${m.quick && !m.reported ? '<span class="quick">Quick</span>' : ''}`}${rpt(m)}</div>`;
+    const row = (m) => `<div class="meal${m.out ? ' out' : ''}${m.reported ? ' done' : ''}"><div class="ml">${esc(m.meal)}</div>${editing(m) ? '' : `<div class="md"${m.title_en ? ' lang="en"' : ''}>${esc(m.title_en || m.description)}${m.prep_min && !m.reported ? `<span class="pm"> · ${m.prep_min} min</span>` : ''}</div>${m.quick && !m.reported ? '<span class="quick">Quick</span>' : ''}`}${rpt(m)}</div>`;
     // Tonight's moves (red heading, one line): "Move tonight · 21:30 · Freezer → Fridge" + the items; Ben's phone rings at the same time.
     const route = thaw.length && thaw.every((t) => t.from === thaw[0].from && t.to === thaw[0].to) && thaw[0].from && thaw[0].to ? ` · ${esc(thaw[0].from)} → ${esc(thaw[0].to)}` : '';
     const mv = thaw.length ? `<div class="thaw"><div class="mg">Move tonight${thaw[0].time ? ` · ${thaw[0].time}` : ''}${route}</div><div class="mi">${thaw.map((t) => esc(t.item) + (route || !(t.from && t.to) ? '' : ` (${esc(t.from)} → ${esc(t.to)})`)).join(' · ')}</div></div>` : '';
