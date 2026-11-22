@@ -306,6 +306,24 @@ body.night #toast button{color:#2457D6}
 .cdt.ai .cdtitle,.cdt.ai .cdn{opacity:.78}
 .cdt .aib{position:absolute;top:7px;right:8px;font-size:10px;font-weight:700;letter-spacing:.3px;color:var(--sub);background:var(--chip);border-radius:6px;padding:1px 5px;line-height:14px}
 @container (max-width:100px){ .cdt .aib .w{display:none} }
+/* Meals (dash-d14, work order 9b700fe5; Pantry × NW2 §2c): today's four meals / tomorrow's + tonight's freezer→fridge moves */
+.meals .meal{display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--line);align-items:baseline}
+.meals .meal:first-child{border-top:none}
+.meals .ml{flex:none;width:80px;font-size:11.5px;font-weight:700;color:var(--sub);letter-spacing:.05em;text-transform:uppercase;line-height:1.35}
+.meals .md{flex:1;font-size:14.5px;line-height:1.35;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meals .out .md{color:var(--sub)}
+.meals .quick{flex:none;font-size:11px;font-weight:700;color:var(--good);background:#DDF2E5;border-radius:6px;padding:1px 6px;line-height:16px}
+body.night .meals .quick{background:#1C3A2A}
+.meals .thaw{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.meals .thaw .mg{font-size:12.5px;font-weight:700;color:var(--bad);letter-spacing:.05em;padding:2px 0 2px}
+.meals .thaw .mi{font-size:14.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meals .backup{padding-top:6px;font-size:13px}
+.meals{container-type:inline-size}
+/* narrow column (work mode Schedule column): meal name on its own line, dish below it */
+@container (max-width:300px){ .meals .meal{display:grid;grid-template-columns:1fr auto;gap:1px 8px;align-items:center} .meals .ml{width:auto;order:1} .meals .quick{order:2} .meals .md{order:3;grid-column:1/-1} }
+.shrow{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:16px;align-items:baseline}
+.shrow .qty{flex:none;min-width:28px;color:var(--sub);font-family:'Space Grotesk',sans-serif}
+.shrow.urgent .it{color:var(--warn);font-weight:600}
 .aitag{font-size:11px;font-weight:700;color:var(--sub);background:var(--chip);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .cdover{font-size:12.5px;font-weight:600;color:var(--warn);margin-left:auto;margin-right:10px;white-space:nowrap}
 @container (max-width:100px){ .cdt .in{padding:8px 8px 7px} .cdt .cdl{display:none} .cdt .cdtitle{font-size:11.5px;line-height:1.2;-webkit-line-clamp:3;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word} }
@@ -370,7 +388,7 @@ header.hC{flex-direction:column;align-items:stretch;gap:12px}
   <header class="hC">
     <div class="util">
       <div class="util-l"><span class="date" id="date"></span><span class="sep">·</span><span class="tz" id="tz"></span></div>
-      <div class="util-r"><div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip swchip" id="swchip" type="button" style="display:none"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
+      <div class="util-r"><div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip swchip" id="swchip" type="button" style="display:none"></button><button class="hchip qchip" id="shchip" type="button" style="display:none" aria-label="Shopping list"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
         <div class="tools"><button class="tab ic" id="refresh" type="button" aria-label="Refresh">↻</button><button class="tab mic" id="mic" type="button" aria-label="Add by voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button></div>
       </div>
     </div>
@@ -572,11 +590,11 @@ const T = { // 常用的積木設定，各版面共用
 const LAYOUTS = {
   compact: {
     // Ben 2026-10-28: weather + schedule | FYI | To-Do + Follow-Ups (Questions moved to the header chip)
-    morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'countdowns', 'timeline'] }, { cls: 'stack', items: ['fyi'] }, { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
+    morning: { cls: 'grid3a', items: [{ cls: 'stack', items: ['weather', 'countdowns', 'timeline'] }, { cls: 'stack', items: ['meals', 'fyi'] }, { cls: 'stack', items: [T.todayPlain, T.followRows] }] },
     // Ben 2026-10-28: Schedule column added, No Date kept
-    work: { cls: 'grid5', items: [{ cls: 'stack', style: 'gap:12px', items: ['countdowns', 'colSched'] }, T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
+    work: { cls: 'grid5', items: [{ cls: 'stack', style: 'gap:12px', items: ['countdowns', 'colSched', 'meals'] }, T.colToday, T.colFollow, T.colWaiting, T.colUndated] },
     // Ben 2026-10-28: evening = wrap up today | plan tomorrow (weather, schedule, tasks) | the rest of the week
-    evening: { cls: 'grid3a', items: [T.leftToday, { cls: 'stack', items: [{ block: 'weather', day: 1 }, 'tmrPlan'] }, { cls: 'stack', items: ['countdowns', 'coming'] }] },
+    evening: { cls: 'grid3a', items: [T.leftToday, { cls: 'stack', items: [{ block: 'weather', day: 1 }, { block: 'meals', day: 1 }, 'tmrPlan'] }, { cls: 'stack', items: ['countdowns', 'coming'] }] },
   },
 };
 // 還沒設計的版面先沿用 compact（之後一種一種定）
@@ -749,6 +767,22 @@ Object.assign(BLOCKS, {
     const shown = cds.slice(0, 3), over = Math.max(0, cds.filter((c) => c.source !== 'ai').length - 3);
     return `<section class="card fixed" style="padding:16px 20px"><h2 style="font-size:17px;margin-bottom:8px;display:flex;align-items:baseline">Countdown${over ? `<span class="cdover">+${over} · keep 3?</span>` : ''}<span class="n"${over ? ' style="margin-left:0"' : ''}>${cds.length}</span></h2><div class="cds">${shown.map(tile).join('')}</div></section>`;
   },
+  // Meals (dash-d14, 2026-11-22, work order 9b700fe5; docs/pantry-nw2-integration.md §2c): Pantry's plan for today (morning / work)
+  // or tomorrow + what to move from the freezer tonight (evening, o.day = 1). Ben: see at a glance what's for dinner, so he can
+  // tell whether the evening has room for more. No pantry data → nothing rendered.
+  meals: (v, o) => {
+    const p = v.notices?.pantry; if (!p) return '';
+    const tmr = o.day === 1;
+    const meals = tmr ? p.meals_tmrw : p.meals_today;
+    const thaw = tmr ? p.thaw_tonight : [];
+    if (!meals.length && !thaw.length) return '';
+    const row = (m) => `<div class="meal${m.out ? ' out' : ''}"><div class="ml">${esc(m.meal)}</div><div class="md" title="${esc(m.description)}">${esc(m.description)}</div>${m.quick ? '<span class="quick">Quick</span>' : ''}</div>`;
+    // Tonight's moves (red heading, one line): "Move tonight · 21:30 · Freezer → Fridge" + the items; Ben's phone rings at the same time.
+    const route = thaw.length && thaw.every((t) => t.from === thaw[0].from && t.to === thaw[0].to) && thaw[0].from && thaw[0].to ? ` · ${esc(thaw[0].from)} → ${esc(thaw[0].to)}` : '';
+    const mv = thaw.length ? `<div class="thaw"><div class="mg">Move tonight${thaw[0].time ? ` · ${thaw[0].time}` : ''}${route}</div><div class="mi">${thaw.map((t) => esc(t.item) + (route || !(t.from && t.to) ? '' : ` (${esc(t.from)} → ${esc(t.to)})`)).join(' · ')}</div></div>` : '';
+    const low = p.backup?.low ? `<div class="m backup">Backup low · tier1 ${p.backup.tier1}${p.backup.min ? ` of ${p.backup.min}` : ''}</div>` : '';
+    return `<section class="card fixed meals" style="padding:14px 20px 12px"><h2 style="font-size:17px;margin-bottom:4px">${tmr ? `Meals · ${shortDay(v.tomorrow)}` : 'Meals today'} <span class="n">${meals.length}</span></h2>${meals.map(row).join('') || '<div class="empty" style="padding:6px 0">Not planned yet</div>'}${mv}${low}</section>`;
+  },
   // FYI: heads-ups that don't need a task, in three groups (Today / New / Coming Up)
   fyi: (v, o) => {
     const max = o.max ?? 99; let shown = 0; const parts = [];
@@ -827,6 +861,12 @@ function tick() {
     const sw = data.spawn_warn || [];
     $('swchip').style.display = sw.length ? '' : 'none';
     $('swchip').textContent = sw.length ? `${sw[0].role} · ${sw[0].n} handoffs/7d${sw.length > 1 ? ` +${sw.length - 1}` : ''}` : '';
+  }
+  if (data) { // Shopping chip (dash-d14): open pantry.shopping_list items; hidden when none / no pantry data
+    const sh = data.notices?.pantry?.shopping || [];
+    $('shchip').style.display = sh.length ? '' : 'none';
+    $('shchip').innerHTML = sh.length ? `Shopping <b>${sh.length}</b>` : '';
+    $('shchip').style.color = sh.some((x) => x.urgent) ? 'var(--warn)' : '';
   }
   if (data) { const q = data.questions.total; $('qchip').innerHTML = q ? `Questions <b>${q}</b>` : 'No questions'; $('qchip').style.color = q ? '' : 'var(--sub)'; }
   if (data) {
@@ -1020,15 +1060,21 @@ $('ritual').addEventListener('pointerdown', () => armRitual(), { capture: true }
 $('ritual').addEventListener('click', (e) => { if (e.target.id === 'ritual') closeRitual(false); });
 // ── Voice input (dash-d5): Chrome speech recognition → Ben reads the text → POST {action:'inbox', text}.
 // Not instant: the hourly judge/writer turns it into a Task Hub task (rule 「看板語音（Ben 本人）」). 30 a day.
+// dash-d15 (work order aabd86c5, Ben 11/21: Mandarin mixed with English, shown in Traditional Chinese): the same recording is also
+// captured with MediaRecorder and sent to nw2-voice (OpenAI transcribe + OpenCC, NW2-Build V11); its text replaces the Web Speech
+// draft unless Ben already edited the draft. Web Speech stays as the instant draft (and the fallback when nw2-voice fails).
+// Sending is unchanged: Ben reads the text and taps Send to NW2. Audio is never stored.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const VOICE_API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-voice';
 let rec = null, vFinal = '', vState = 'idle', vTimer = null;
+let mrec = null, vEdited = false, vReq = 0; // MediaRecorder, "Ben typed in the box", transcribe request id
 const vLang = () => store.get('nw2.voice.lang') || 'zh-TW';
 function setVoice(state, msg) {
   vState = state; const st = $('vState'); st.classList.toggle('live', state === 'listening');
   st.querySelector('.vdot').style.visibility = state === 'listening' ? 'visible' : 'hidden';
   $('vStateText').textContent = msg ?? ({ listening: 'Listening… speak now, then tap Stop (or just pause).', review: 'Check the text, fix anything, then send.', sending: 'Sending…', idle: '' }[state] || '');
   $('vStop').style.display = state === 'listening' ? '' : 'none';
-  $('vAgain').style.display = state === 'listening' || !SR ? 'none' : '';
+  $('vAgain').style.display = state === 'listening' || !(SR || window.MediaRecorder) ? 'none' : '';
   $('vSend').disabled = state === 'sending' || !$('vText').value.trim();
   document.querySelectorAll('#vLang .tab').forEach((b) => b.classList.toggle('on', b.dataset.lang === vLang()));
 }
@@ -1036,25 +1082,69 @@ function openVoice() {
   if (!data) return;
   $('vText').value = ''; vFinal = '';
   $('voice').style.display = 'flex';
-  if (!SR) { setVoice('review', 'Voice needs Chrome. You can type instead.'); $('vText').focus(); return; }
+  if (!SR && !(navigator.mediaDevices?.getUserMedia && window.MediaRecorder)) { setVoice('review', 'Voice needs Chrome. You can type instead.'); $('vText').focus(); return; }
   startRec();
 }
+// Record the microphone for nw2-voice (alongside Web Speech). Any failure here just leaves the Web Speech draft.
+async function startMedia() {
+  stopMedia(false);
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (vState !== 'listening') { stream.getTracks().forEach((t) => t.stop()); return; } // stopped before the mic came up
+    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+    const chunks = [];
+    const m = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+    m.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    m.onstop = () => { stream.getTracks().forEach((t) => t.stop()); if (mrec === m) mrec = null; if (m.wanted) transcribe(new Blob(chunks, { type: m.mimeType || mime || 'audio/webm' })); };
+    mrec = m; m.start(1000);
+  } catch { mrec = null; }
+}
+function stopMedia(transcribeIt) {
+  if (!mrec) return;
+  const m = mrec; m.wanted = !!transcribeIt;
+  try { if (m.state !== 'inactive') m.stop(); else m.onstop?.(); } catch { mrec = null; }
+}
+const vFile = (blob) => { const ext = /ogg/.test(blob.type) ? 'ogg' : /mp4/.test(blob.type) ? 'm4a' : 'webm'; return new File([blob], `board.${ext}`, { type: blob.type }); };
+async function transcribe(blob) {
+  if (!blob.size || vState === 'sending' || $('voice').style.display === 'none') return;
+  const id = ++vReq;
+  const draft = $('vText').value;
+  setVoice('review', `${draft.trim() ? 'Draft shown · ' : ''}Recognizing Chinese + English…`);
+  try {
+    const fd = new FormData(); fd.append('file', vFile(blob));
+    const r = await fetch(VOICE_API, { method: 'POST', headers: { 'x-nw2-dash': key }, body: fd });
+    const out = await r.json().catch(() => ({}));
+    if (id !== vReq || vState !== 'review') return; // a newer recording, or already sent / closed
+    if (r.ok && out.ok && String(out.text || '').trim()) {
+      if (!vEdited) { $('vText').value = String(out.text).trim().slice(0, 500); $('vSend').disabled = false; setVoice('review', 'Recognized (Chinese + English). Check the text, fix anything, then send.'); }
+      else setVoice('review', 'You edited the draft, so it was kept. Check the text, then send.');
+      return;
+    }
+    const why = { no_audio: 'nothing was recorded', too_long: 'the recording is too long', busy: 'the recognition service is busy', transcribe_failed: 'recognition failed', unauthorized: 'the key was not accepted' }[out.error] || `error ${r.status}`;
+    setVoice('review', `Chinese + English recognition didn't work (${why}) · showing Chrome's draft. Fix anything, then send.`);
+  } catch { if (id === vReq && vState === 'review') setVoice('review', "Couldn't reach the recognition service · showing Chrome's draft. Fix anything, then send."); }
+}
 function startRec() {
-  stopRec(false); vFinal = ''; $('vText').value = '';
+  stopRec(false); vFinal = ''; $('vText').value = ''; vEdited = false; vReq++;
+  if (!SR) { // no Web Speech (not Chrome): record for nw2-voice only
+    setVoice('listening', 'Recording… speak now, then tap Stop.'); startMedia();
+    clearTimeout(vTimer); vTimer = setTimeout(() => stopRec(true), 45_000); return;
+  }
   try {
     rec = new SR(); rec.lang = vLang(); rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
     rec.onresult = (e) => { let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) vFinal += r[0].transcript; else interim += r[0].transcript; } $('vText').value = (vFinal + interim).slice(0, 500); $('vSend').disabled = !$('vText').value.trim(); };
-    rec.onerror = (e) => { const m = { 'not-allowed': 'Microphone is blocked. Allow it for this site in Chrome, then try again.', 'no-speech': "Didn't catch anything. Tap Record again, or type.", network: 'No connection for speech recognition. Type instead.', 'audio-capture': 'No microphone found. Type instead.' }[e.error] || `Speech error (${e.error}). You can type instead.`; stopRec(false); setVoice('review', m); };
-    rec.onend = () => { if (vState === 'listening') setVoice('review'); rec = null; };
-    rec.start(); setVoice('listening');
+    rec.onerror = (e) => { const m = { 'not-allowed': 'Microphone is blocked. Allow it for this site in Chrome, then try again.', 'no-speech': "Didn't catch anything. Tap Record again, or type.", network: 'No connection for speech recognition. Type instead.', 'audio-capture': 'No microphone found. Type instead.' }[e.error] || `Speech error (${e.error}). You can type instead.`; const keep = e.error === 'no-speech' || e.error === 'network'; stopRec(keep); if (!keep || !mrec) setVoice('review', m); };
+    rec.onend = () => { if (vState === 'listening') stopRec(true); rec = null; }; // Chrome ends on a pause → finish and transcribe
+    rec.start(); setVoice('listening'); startMedia();
     clearTimeout(vTimer); vTimer = setTimeout(() => stopRec(true), 45_000);
   } catch (e) { setVoice('review', 'Could not start the microphone. Type instead.'); }
 }
-function stopRec(toReview) { clearTimeout(vTimer); if (rec) { try { rec.onend = rec.onresult = rec.onerror = null; rec.stop(); } catch {} rec = null; } if (toReview) setVoice('review'); }
-function closeVoice() { stopRec(false); $('voice').style.display = 'none'; setVoice('idle'); }
+function stopRec(toReview) { clearTimeout(vTimer); if (rec) { try { rec.onend = rec.onresult = rec.onerror = null; rec.stop(); } catch {} rec = null; } if (toReview) setVoice('review'); stopMedia(toReview); }
+function closeVoice() { stopRec(false); vReq++; $('voice').style.display = 'none'; setVoice('idle'); }
 async function sendVoice() {
   const text = $('vText').value.trim().slice(0, 500); if (!text) return;
-  stopRec(false); setVoice('sending');
+  stopRec(false); vReq++; setVoice('sending');
   try {
     const r = await fetch(API, { method: 'POST', headers: { 'x-nw2-dash': key, 'content-type': 'application/json' }, body: JSON.stringify({ action: 'inbox', text }) });
     const out = await r.json().catch(() => ({}));
@@ -1062,7 +1152,7 @@ async function sendVoice() {
     setVoice('review', { bad_text: 'Nothing to send — 1 to 500 characters.', daily_limit: "Daily limit reached (30 a day). Try again tomorrow.", save_failed: "Couldn't save. Try again in a bit." }[out.error] || "Didn't go through. Try again in a bit.");
   } catch { setVoice('review', "Can't reach NW2 right now. Try again in a bit."); }
 }
-$('vText').addEventListener('input', () => { $('vSend').disabled = !$('vText').value.trim(); });
+$('vText').addEventListener('input', () => { vEdited = true; $('vSend').disabled = !$('vText').value.trim(); });
 $('voice').addEventListener('click', (e) => { if (e.target.id === 'voice') closeVoice(); });
 let panelKind = 'health';
 function openHealth(kind = panelKind) {
@@ -1071,9 +1161,10 @@ function openHealth(kind = panelKind) {
   panelKind = kind;
   const v = derive(data);
   const cds = cdSort(v.notices?.countdowns || []);
-  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : kind === 'spawn' ? 'Frequent Handoffs' : 'System Health';
+  $('panelTitle').textContent = kind === 'questions' ? 'Questions from NW2' : kind === 'overdue' ? `Overdue · ${v.overdue.length}` : kind === 'budget' ? 'AI Spend This Month' : kind === 'countdowns' ? `Countdown · ${cds.length}` : kind === 'spawn' ? 'Frequent Handoffs' : kind === 'shopping' ? `Shopping · ${(data.notices?.pantry?.shopping || []).length}` : 'System Health';
   $('healthBody').innerHTML = kind === 'spawn' ? ((data.spawn_warn || []).map((r) => `<div class="halert"><div class="t" style="font-size:16px;color:var(--warn)">${esc(r.role)} handed off ${r.n} times in 7 days</div><div class="m" style="margin-top:4px">Its way of working may need a look — talk to it.${r.last_at ? ` Last handoff ${esc(new Date(String(r.last_at).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))}.` : ''}</div></div>`).join('') || '<div class="empty">No frequent handoffs</div>') + '<div class="m" style="padding-top:10px">Shown when a chat starts more than 3 new versions in 7 days. Separate from the system light.</div>'
     : kind === 'budget' ? budgetPanel()
+    : kind === 'shopping' ? shoppingPanel()
     : kind === 'countdowns' ? (cds.map((c) => `<div class="bdrow"><span><b style="display:inline-block;min-width:64px;color:${c.days_left === 0 ? 'var(--bad)' : c.days_left <= 3 ? 'var(--warn)' : 'inherit'}">${c.days_left === 0 ? 'Today' : c.days_left === 1 ? '1 day' : `${c.days_left} days`}</b>${esc(c.title)}${c.source === 'ai' ? ' <span class="aitag">AI pick</span>' : ''}${c.source === 'ai' && c.pick_reason ? `<div class="m" style="margin:3px 0 0 64px">${esc(c.pick_reason)}</div>` : ''}</span><span class="m">${shortDay(c.date)}${c.kind ? ` · ${esc(c.kind)}` : ''}</span></div>`).join('') + '<div class="m" style="padding-top:12px">New dates go in via NW2-Inbox or NW2-Build. AI picks fill free slots; NW2-Ask will ask whether to keep them.</div>')
     : kind === 'overdue'
     ? '<div class="defn">Tasks whose Do Date or Due Date is before today and aren\'t done yet. Move them to tomorrow or mark them done.</div>'
@@ -1082,6 +1173,14 @@ function openHealth(kind = panelKind) {
     ? (v.questions.items.length ? v.questions.items.map((x) => `<div class="halert"><div class="m">${esc(x.topic)}</div><div class="t" style="font-size:16px;font-weight:400">${esc(x.question)}</div></div>`).join('') + `<div class="m" style="padding-top:10px">${v.questions.total > v.questions.items.length ? `+${v.questions.total - v.questions.items.length} more · ` : ''}Answer in NW2-Ask (posted daily at 12:10 and 20:30)</div>` : '<div class="empty">No open questions</div>')
     : BLOCKS.health(v) + '<div class="detailsRow"><button class="btn primary" id="healthDetails" type="button">Details</button><span class="m">Spending, 7:45 acceptance, run history, alerts</span></div>';
   $('healthPanel').style.display = 'flex';
+}
+// Shopping list (dash-d14): read-only, grouped by store, urgent first. Routes / lanes come later (Pantry × NW2 step 3).
+function shoppingPanel() {
+  const sh = data.notices?.pantry?.shopping || []; if (!sh.length) return '<div class="empty">Nothing on the list</div>';
+  const by = new Map(); sh.forEach((x) => { if (!by.has(x.store)) by.set(x.store, []); by.get(x.store).push(x); });
+  const stores = [...by.keys()].sort((a, b) => (a === 'Any') - (b === 'Any') || a.localeCompare(b));
+  return stores.map((st) => `<div class="fy-g">${esc(st)} · ${by.get(st).length}</div>` + by.get(st).map((x) => `<div class="shrow${x.urgent ? ' urgent' : ''}"><span class="qty">${x.qty ? esc(x.qty) : '·'}</span><span class="it">${esc(x.item)}${x.urgent ? ' <span class="aitag" style="color:var(--warn)">Urgent</span>' : ''}</span></div>`).join('')).join('')
+    + `<div class="m" style="padding-top:12px">From Pantry's shopping list${data.notices.pantry.updated_at ? ` · updated ${new Date(data.notices.pantry.updated_at).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : ''}. Add or tick items in Pantry-Ask.</div>`;
 }
 // Budget details (dash-d9). The last 3 days come from ?section=health_detail, fetched only when the panel opens.
 let bud3 = null;
@@ -1119,6 +1218,7 @@ document.addEventListener('click', (e) => {
   if (b.id === 'off-btn') { setScreenOff(true); return; }
   if (b.id === 'status') { openHealth('health'); return; }
   if (b.id === 'swchip') { openHealth('spawn'); return; }
+  if (b.id === 'shchip') { openHealth('shopping'); return; }
   if (b.id === 'qchip') { openHealth('questions'); return; }
   if (b.id === 'budbtn') { openHealth('budget'); return; }
   if (b.id === 'rchip') { openRitual(curMode() === 'morning' ? 'morning' : 'evening'); return; }
