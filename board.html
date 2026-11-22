@@ -364,8 +364,6 @@ body.night .meals .quick{background:#1C3A2A}
 .vstate.live .vdot{animation:blink 1.4s ease-in-out infinite}
 #vText{width:100%;min-height:150px;max-height:40vh;resize:none;font:inherit;font-size:22px;line-height:1.45;padding:16px 18px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);-webkit-user-select:text;user-select:text}
 #vText::placeholder{color:var(--sub);opacity:.7}
-.vlang{display:flex;gap:6px}
-.vlang .tab{height:36px;font-size:14px;padding:0 14px}
 .vbtns{display:flex;gap:10px;justify-content:flex-end;align-items:center}
 .vbtns .m{flex:1}
 .vbtns .btn[disabled]{opacity:.45}
@@ -441,7 +439,7 @@ header.hC{flex-direction:column;align-items:stretch;gap:12px}
   <div class="rhead"><div style="flex:1;min-width:0"><div class="rkick">ADD TO NW2</div><h2 id="vTitle" style="margin:0;font-size:26px">Say it</h2></div><button class="btn" id="vClose" type="button">Cancel</button></div>
   <div class="vstate" id="vState"><span class="vdot"></span><span id="vStateText"></span></div>
   <textarea id="vText" placeholder="Listening… or tap here to type" maxlength="500"></textarea>
-  <div class="vbtns"><div class="vlang" id="vLang"><button class="tab" data-lang="zh-TW" type="button">中文</button><button class="tab" data-lang="en-US" type="button">English</button></div><span class="m" id="vHint"></span><button class="btn" id="vAgain" type="button">Record again</button><button class="btn" id="vStop" type="button">Stop</button><button class="btn primary" id="vSend" type="button">Send to NW2</button></div>
+  <div class="vbtns"><span class="m" id="vHint"></span><button class="btn" id="vAgain" type="button">Record again</button><button class="btn" id="vStop" type="button">Stop</button><button class="btn primary" id="vSend" type="button">Send to NW2</button></div>
 </div></div>
 <div id="off"><div class="offhint">Tap to wake</div></div>
 <div id="toast"></div>
@@ -1140,7 +1138,8 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const VOICE_API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-voice';
 let rec = null, vFinal = '', vState = 'idle', vTimer = null;
 let mrec = null, vEdited = false, vReq = 0; // MediaRecorder, "Ben typed in the box", transcribe request id
-const vLang = () => store.get('nw2.voice.lang') || 'zh-TW';
+// Language buttons removed (Ben 11/22: nw2-voice handles mixed Mandarin / English, so the draft language no longer matters).
+const vLang = () => 'zh-TW';
 function setVoice(state, msg) {
   vState = state; const st = $('vState'); st.classList.toggle('live', state === 'listening');
   st.querySelector('.vdot').style.visibility = state === 'listening' ? 'visible' : 'hidden';
@@ -1148,7 +1147,6 @@ function setVoice(state, msg) {
   $('vStop').style.display = state === 'listening' ? '' : 'none';
   $('vAgain').style.display = state === 'listening' || !(SR || window.MediaRecorder) ? 'none' : '';
   $('vSend').disabled = state === 'sending' || !$('vText').value.trim();
-  document.querySelectorAll('#vLang .tab').forEach((b) => b.classList.toggle('on', b.dataset.lang === vLang()));
 }
 function openVoice() {
   if (!data) return;
@@ -1337,7 +1335,6 @@ document.addEventListener('click', (e) => {
   if (b.id === 'vStop') { stopRec(true); return; }
   if (b.id === 'vAgain') { startRec(); return; }
   if (b.id === 'vSend') { sendVoice(); return; }
-  if (b.dataset.lang) { store.set('nw2.voice.lang', b.dataset.lang); if (vState === 'listening') startRec(); else setVoice(vState); return; }
   if (b.id === 'rClose') { closeRitual(false); return; }
   if (b.id === 'rDone') { closeRitual(true); return; }
   if (b.id === 'odbtn') { openHealth('overdue'); return; }
