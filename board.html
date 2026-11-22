@@ -36,7 +36,8 @@ main{flex:1;min-height:0}
 .card h2 .n{font-family:'Space Grotesk',sans-serif;color:var(--sub);font-weight:600}
 .card.dark h2 .n{color:var(--darksub)}
 .list{overflow-y:auto;overflow-x:hidden;min-height:0;flex:1;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
-.row{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+.row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.row .t{font-size:16px;line-height:1.35}
 .card.dark .row{border-color:rgba(255,255,255,.12)}
 .check{flex:none;width:48px;height:48px;border-radius:12px;border:2px solid #9AA3B0;background:transparent;position:relative;padding:0;transition:background-color .18s,border-color .18s,transform .12s}
 .check svg{position:absolute;inset:0;width:100%;height:100%;padding:10px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -44,13 +45,14 @@ main{flex:1;min-height:0}
 .check.on{background:var(--accent);border-color:var(--accent)}
 .check.on svg path{stroke-dashoffset:0}
 .check:active{transform:scale(.92)}
-.who{flex:none;width:44px;height:44px;border-radius:22px;background:#E4ECFB;color:#2457D6;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+.who{flex:none;width:40px;height:40px;border-radius:22px;background:#E4ECFB;color:#2457D6;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
 body.night .who{background:#24364F;color:#C3D4FF}
 .t{font-size:17px;font-weight:500;line-height:1.38}
 .m{font-size:13.5px;color:var(--sub);margin-top:3px}
 .card.dark .m{color:var(--darksub)}
 .m.late{color:var(--warn)}
 .btn{flex:none;height:48px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:15px}
+.row>.btn{padding:0 11px;font-size:14px;height:44px}
 .btn.primary{background:var(--accent);border:none;color:var(--bg);font-weight:700}
 .empty{color:var(--sub);font-size:16px;padding:12px 0}
 /* morning */
@@ -120,6 +122,7 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .grid3a{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,5fr) minmax(0,4fr);grid-template-rows:minmax(0,1fr);gap:18px;height:100%;min-height:0}
 .stack>.card{flex:1 1 0;min-height:0}
 .stack>.fixed{flex:none}
+.stack>.auto,.stack>.col.auto{flex:0 1 auto;min-height:0}
 /* header stats (Ben 2026-10-28); sizes and spacing now set by header v3 (.hC) below */
 .stats{flex:1;display:flex;justify-content:center;align-items:flex-end;padding:0;min-width:0}
 .stat{padding:2px 9px;border-left:1px solid var(--line);min-width:min-content}
@@ -725,7 +728,7 @@ Object.assign(BLOCKS, {
     }
     if (!lined) rows.push(nowLine);
     const tmr = v.tmrMeet.length ? `<div class="tmr">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}${v.tmrMeet.length > 2 ? ` +${v.tmrMeet.length - 2} more` : ''}</div>` : '';
-    return `<section class="card"><h2>Schedule <span class="n">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings or timed reminders today</div>'}</div>${tmr}</section>`;
+    return `<section class="card auto"><h2>Schedule <span class="n">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings or timed reminders today</div>'}</div>${tmr}</section>`;
   },
   // Work mode: today's schedule as a column (meetings + timed tasks, red Now line; finished ones fade)
   colSched: (v) => {
@@ -740,7 +743,7 @@ Object.assign(BLOCKS, {
     }
     if (!lined) rows.push(nowLine);
     const tmr = v.tmrMeet.length ? `<div class="m" style="padding:4px 4px 0">Tomorrow: ${v.tmrMeet.slice(0, 2).map((m) => `${m.all_day ? 'All day' : m.start} ${esc(m.subject)}`).join(', ')}</div>` : '';
-    return `<section class="col"><h2>Schedule<span class="num">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings today</div>'}</div>${tmr}</section>`;
+    return `<section class="col auto"><h2>Schedule<span class="num">${v.sched.length}</span></h2><div class="list">${v.sched.length ? rows.join('') : '<div class="empty">No meetings today</div>'}</div>${tmr}</section>`;
   },
   // Evening: tomorrow at a glance — schedule (meetings + timed tasks), the other tasks, heads-ups dated tomorrow
   tmrPlan: (v) => {
