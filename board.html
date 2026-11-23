@@ -1139,6 +1139,9 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const VOICE_API = 'https://saqlqwushpkdtwsnebed.supabase.co/functions/v1/nw2-voice';
 let rec = null, vFinal = '', vState = 'idle', vTimer = null;
 let mrec = null, vEdited = false, vReq = 0; // MediaRecorder, "Ben typed in the box", transcribe request id
+// dash-d21 (NW2-Build V13, Ben 11/22: tapped Send while still Listening → only Chrome's draft went out, nw2-voice never ran):
+// Send while listening or while recognizing now waits for nw2-voice and sends its text; if recognition fails nothing is sent.
+let vSendAfter = false, vPending = false;
 // Language buttons removed (Ben 11/22: nw2-voice handles mixed Mandarin / English, so the draft language no longer matters).
 const vLang = () => 'zh-TW';
 function setVoice(state, msg) {
@@ -1181,23 +1184,29 @@ async function transcribe(blob) {
   if (!blob.size || vState === 'sending' || $('voice').style.display === 'none') return;
   const id = ++vReq;
   const draft = $('vText').value;
-  setVoice('review', `${draft.trim() ? 'Draft shown · ' : ''}Recognizing Chinese + English…`);
+  setVoice('review', vSendAfter ? 'Recognizing Chinese + English… it will send when done.' : `${draft.trim() ? 'Draft shown · ' : ''}Recognizing Chinese + English…`);
+  vPending = true;
   try {
     const fd = new FormData(); fd.append('file', vFile(blob));
     const r = await fetch(VOICE_API, { method: 'POST', headers: { 'x-nw2-dash': key }, body: fd });
     const out = await r.json().catch(() => ({}));
     if (id !== vReq || vState !== 'review') return; // a newer recording, or already sent / closed
+    vPending = false;
     if (r.ok && out.ok && String(out.text || '').trim()) {
       if (!vEdited) { $('vText').value = String(out.text).trim().slice(0, 500); $('vSend').disabled = false; setVoice('review', 'Recognized (Chinese + English). Check the text, fix anything, then send.'); }
       else setVoice('review', 'You edited the draft, so it was kept. Check the text, then send.');
+      if (vSendAfter) { vSendAfter = false; sendVoice(); }
       return;
     }
+    const after = vSendAfter ? ' Not sent yet — ' : ' · ';
+    vSendAfter = false;
     const why = { no_audio: 'nothing was recorded', too_long: 'the recording is too long', busy: 'the recognition service is busy', transcribe_failed: 'recognition failed', unauthorized: 'the key was not accepted' }[out.error] || `error ${r.status}`;
-    setVoice('review', `Chinese + English recognition didn't work (${why}) · showing Chrome's draft. Fix anything, then send.`);
-  } catch { if (id === vReq && vState === 'review') setVoice('review', "Couldn't reach the recognition service · showing Chrome's draft. Fix anything, then send."); }
+    setVoice('review', `Chinese + English recognition didn't work (${why}).${after}showing Chrome's draft. Fix anything, then send.`);
+  } catch { if (id === vReq && vState === 'review') { const sa = vSendAfter; vPending = false; vSendAfter = false; setVoice('review', `Couldn't reach the recognition service.${sa ? ' Not sent yet — ' : ' · '}showing Chrome's draft. Fix anything, then send.`); } }
+  finally { if (id === vReq) vPending = false; }
 }
 function startRec() {
-  stopRec(false); vFinal = ''; $('vText').value = ''; vEdited = false; vReq++;
+  stopRec(false); vFinal = ''; $('vText').value = ''; vEdited = false; vReq++; vSendAfter = false; vPending = false;
   if (!SR) { // no Web Speech (not Chrome): record for nw2-voice only
     setVoice('listening', 'Recording… speak now, then tap Stop.'); startMedia();
     clearTimeout(vTimer); vTimer = setTimeout(() => stopRec(true), 45_000); return;
@@ -1212,8 +1221,14 @@ function startRec() {
   } catch (e) { setVoice('review', 'Could not start the microphone. Type instead.'); }
 }
 function stopRec(toReview) { clearTimeout(vTimer); if (rec) { try { rec.onend = rec.onresult = rec.onerror = null; rec.stop(); } catch {} rec = null; } if (toReview) setVoice('review'); stopMedia(toReview); }
-function closeVoice() { stopRec(false); vReq++; $('voice').style.display = 'none'; setVoice('idle'); }
+function closeVoice() { stopRec(false); vReq++; vSendAfter = false; vPending = false; $('voice').style.display = 'none'; setVoice('idle'); }
 async function sendVoice() {
+  // Still recording (or nw2-voice still working) and Ben hasn't typed: finish recognition first, then send its text.
+  if (!vEdited && ((vState === 'listening' && mrec) || (vState === 'review' && vPending))) {
+    vSendAfter = true;
+    if (vState === 'listening') stopRec(true); else setVoice('review', 'Recognizing Chinese + English… it will send when done.');
+    return;
+  }
   const text = $('vText').value.trim().slice(0, 500); if (!text) return;
   stopRec(false); vReq++; setVoice('sending');
   try {
