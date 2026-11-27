@@ -106,6 +106,7 @@ body.night .who{background:#24364F;color:#C3D4FF}
 .sysfix[open] summary::before{transform:rotate(90deg)}
 .sysfix .hrow,.sysfix .halert{opacity:.75}
 .sysfix .hrow .hnote{color:var(--sub)!important;font-weight:400!important}
+.daynote{background:var(--amberbg);color:var(--warn);font-weight:600;white-space:nowrap;margin-left:4px;cursor:default;font-size:13px}
 .swchip{background:var(--amberbg)!important;color:var(--warn)!important;font-weight:600;white-space:nowrap}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 22px;border-radius:12px;font-size:16px;display:none}
 /* ── Reminders (dash-d3 notices) + weather ── */
@@ -413,7 +414,7 @@ header.hC{flex-direction:column;align-items:stretch;gap:12px}
 <div id="app">
   <header class="hC">
     <div class="util">
-      <div class="util-l"><span class="date" id="date"></span><span class="sep">·</span><span class="tz" id="tz"></span></div>
+      <div class="util-l"><span class="date" id="date"></span><span class="sep">·</span><span class="tz" id="tz"></span><span class="hchip daynote" id="dayNote" style="display:none"></span></div>
       <div class="util-r"><div class="chips"><span class="hchip bchip" id="bchip" style="display:none" aria-label="Battery"></span><button class="hchip" id="rchip" type="button" style="display:none"></button><button class="hchip swchip" id="swchip" type="button" style="display:none"></button><button class="hchip qchip" id="shchip" type="button" style="display:none" aria-label="Shopping list"></button><button class="hchip qchip" id="qchip" type="button">Questions <b id="qn">0</b></button><button class="hchip" id="status" type="button" aria-label="System status"><span class="dot"></span><span id="statusText"></span></button></div>
         <div class="tools"><button class="tab ic" id="refresh" type="button" aria-label="Refresh">↻</button><button class="tab mic" id="mic" type="button" aria-label="Add by voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button><button class="tab ic" id="fs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button class="tab ic" id="off-btn" type="button" aria-label="Screen off"><svg viewBox="0 0 24 24"><path d="M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></button></div>
       </div>
@@ -460,7 +461,7 @@ const MON = ['January','February','March','April','May','June','July','August','
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const chi = () => { // Houston wall clock
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour12:false,year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',weekday:'short'}).formatToParts(new Date()).map(x=>[x.type,x.value]));
-  return { h: +p.hour % 24, m: +p.minute, mon: +p.month, day: +p.day, wd: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday) };
+  return { h: +p.hour % 24, m: +p.minute, y: +p.year, mon: +p.month, day: +p.day, wd: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday) };
 };
 const autoMode = () => { const { h, wd } = chi(); if (h >= 18 || h < 6) return 'evening'; if (h < 9 || wd === 0 || wd === 6) return 'morning'; return 'work'; };
 const curMode = () => mode === 'auto' ? autoMode() : mode;
@@ -659,7 +660,13 @@ function rainAhead(w, date, from = chi().h) {
 const hh = (h) => `${String(h).padStart(2, '0')}:00`;
 
 const hm = (s) => s ? (+s.slice(0, 2)) * 60 + (+s.slice(3, 5)) : null;
-const nowMin = () => { const c = chi(); return c.h * 60 + c.m; };
+// Board day (dash-d22, Ben 11/27: the board must not flip to the next day at 00:00 while he is still "in the evening"):
+// the day rolls over at DAY_START (03:00 Houston; the server uses the same constant, data.day_start_hour). 00:00–02:59 is still
+// yesterday — so "now" is 24:xx–26:xx on that day's timeline and everything scheduled is in the past.
+const DAY_START = 3;
+const dayStart = () => data?.day_start_hour ?? DAY_START;
+const boardDay = () => { const c = chi(); const d = new Date(Date.UTC(c.y, c.mon - 1, c.day, 12)); if (c.h < dayStart()) d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+const nowMin = () => { const c = chi(); return (c.h < dayStart() ? c.h + 24 : c.h) * 60 + c.m; };
 function deriveNotices(d) {
   const n = d.notices || {};
   const now = nowMin();
@@ -704,25 +711,28 @@ Object.assign(BLOCKS, {
   // Weather: now (or tomorrow's forecast with o.day = 1), high/low, umbrella hint, hourly chance-of-rain chart
   weather: (v, o) => {
     if (!wx?.current) return '';
-    const day = o.day === 1 ? 1 : 0;
-    const date = day ? v.tomorrow : v.today;
-    const code = day ? wx.daily.weather_code?.[1] : wx.current.weather_code;
+    const date = o.day === 1 ? v.tomorrow : v.today;
+    const day = (wx.daily.time || []).indexOf(date); if (day < 0) return ''; // dash-d22: index by date, not 0/1
+    // "now" styling only for the today card on the real calendar day; the Tomorrow card is always a forecast (after midnight the
+    // board's tomorrow is the real today, but Ben is still looking at it as tomorrow)
+    const isNow = o.day !== 1 && date === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    const code = isNow ? wx.current.weather_code : wx.daily.weather_code?.[day];
     if (code === undefined) return '';
     const [lbl, kind] = WMO(code);
     const hi = Math.round(wx.daily.temperature_2m_max[day]), lo = Math.round(wx.daily.temperature_2m_min[day]);
-    const ahead = rainAhead(wx, date, day ? 7 : chi().h); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
-    const when = day ? ' tomorrow' : '';
+    const ahead = rainAhead(wx, date, isNow ? chi().h : 7); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
+    const when = o.day === 1 ? ' tomorrow' : '';
     const sunrise = hhmm(wx.daily.sunrise?.[day]), sunset = hhmm(wx.daily.sunset?.[day]);
     const sun = sunrise && sunset ? `<div class="hl">Sunrise ${sunrise} · Sunset ${sunset}</div>` : '';
-    const aqi = !day && aq !== null ? (([lbl, col]) => `<span class="aqi" style="--aq:${col}"><i></i>AQI ${Math.round(aq)} · ${lbl}</span>`)(aqiBand(aq)) : '';
+    const aqi = isNow && aq !== null ? (([lbl, col]) => `<span class="aqi" style="--aq:${col}"><i></i>AQI ${Math.round(aq)} · ${lbl}</span>`)(aqiBand(aq)) : '';
     const umbIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9zM12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
     const rainNote = peak.p >= 40 ? `<div class="umbpill">${umbIcon}Grab an umbrella${when} · ${peak.p}% around ${hh(peak.h)}</div>`
       : `<div class="norain">${peak.p >= 20 ? `Up to ${peak.p}% chance of rain${when}` : `No rain expected${when}`}</div>`;
     // Bars for each hour left today; the wettest hour is darker and labeled
     const bars = ahead.map((a) => `<div class="b${a === peak && a.p >= 20 ? ' hi' : ''}" title="${hh(a.h)} ${a.p}%">${a === peak && a.p >= 20 ? `<span>${a.p}%</span>` : ''}<i style="height:${Math.max(6, a.p * 0.78)}%"></i></div>`).join('');
     return `<section class="wx2">
-      <div class="wx-top">${wxIcon(kind, 54)}<div class="tmp">${day ? `${hi}°` : `${Math.round(wx.current.temperature_2m)}°`}</div>
-        <div style="min-width:0;margin-left:4px"><div class="lbl">${day ? `Tomorrow · ${lbl}` : lbl}</div><div class="hl">${day ? `${shortDay(v.tomorrow)} · ` : ''}H ${hi}° · L ${lo}°</div>${sun}</div></div>
+      <div class="wx-top">${wxIcon(kind, 54)}<div class="tmp">${isNow ? `${Math.round(wx.current.temperature_2m)}°` : `${hi}°`}</div>
+        <div style="min-width:0;margin-left:4px"><div class="lbl">${o.day === 1 ? `Tomorrow · ${lbl}` : lbl}</div><div class="hl">${o.day === 1 ? `${shortDay(v.tomorrow)} · ` : ''}H ${hi}° · L ${lo}°</div>${sun}</div></div>
       <div class="wx-row">${rainNote}${aqi}</div>
       ${ahead.length > 1 ? `<div class="chart"><div class="bars">${bars}</div><div class="rainx"><span>${hh(ahead[0].h)}</span><span>Chance of rain</span><span>${hh(ahead[ahead.length - 1].h)}</span></div></div>` : ''}</section>`;
   },
@@ -925,7 +935,18 @@ function tick() {
   const c = chi();
   $('clock').textContent = `${String(c.h).padStart(2,'0')}:${String(c.m).padStart(2,'0')}`;
   const tp = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
-  $('date').textContent = `${WDL[c.wd]}, ${MON[c.mon - 1]} ${c.day}`;
+  { // Header date = the board day; after midnight say so and count down to the switch (dash-d22)
+    const bd = boardDay(); const d = new Date(bd + 'T12:00:00Z');
+    $('date').textContent = `${WDL[d.getUTCDay()]}, ${MON[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    const late = c.h < dayStart();
+    const dn = $('dayNote');
+    if (late) { const left = dayStart() * 60 - (c.h * 60 + c.m); const nd = new Date(d.getTime() + 864e5);
+      dn.textContent = `Still ${WD[d.getUTCDay()]} ${d.getUTCMonth() + 1}/${d.getUTCDate()} · ${WD[nd.getUTCDay()]} ${nd.getUTCMonth() + 1}/${nd.getUTCDate()} at ${String(dayStart()).padStart(2, '0')}:00 (${left >= 60 ? `${Math.floor(left / 60)}h ` : ''}${left % 60}m)`;
+      dn.title = `Still showing ${WDL[d.getUTCDay()]} ${MON[d.getUTCMonth()]} ${d.getUTCDate()} · switches to ${WDL[nd.getUTCDay()]} ${MON[nd.getUTCMonth()]} ${nd.getUTCDate()} at ${String(dayStart()).padStart(2, '0')}:00`; dn.style.display = ''; }
+    else dn.style.display = 'none';
+    document.querySelectorAll('.util-l .tz, .util-l .sep').forEach((el) => { el.style.display = late ? 'none' : ''; }); // make room for the note
+    if (tick.lastDay && tick.lastDay !== bd && !screenOff) { tick.lastDay = bd; load(); } else tick.lastDay = bd; // 03:00: re-fetch, new day
+  }
   $('tz').innerHTML = `Taipei <b>${String(+tp.hour % 24).padStart(2, '0')}:${tp.minute}</b> · ${tp.weekday}`;
   const st = $('status');
   if (data) { // handoff count (dash-d12, work order 65b35188): yellow, apart from the system light; hidden when none
@@ -1086,10 +1107,12 @@ let RITUAL_MS = 4 * 60e3;
 let ritual = null; // { kind, until, ticker }
 const wxLine = (day) => {
   if (!wx?.current) return '';
-  const code = day ? wx.daily.weather_code?.[1] : wx.current.weather_code; if (code === undefined) return '';
-  const [lbl] = WMO(code); const hi = Math.round(wx.daily.temperature_2m_max[day]), lo = Math.round(wx.daily.temperature_2m_min[day]);
-  const ahead = rainAhead(wx, day ? data.tomorrow : data.today, day ? 7 : chi().h); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
-  return `<span><b>${day ? `${hi}°` : `${Math.round(wx.current.temperature_2m)}°`}</b> ${lbl} · H ${hi}° L ${lo}°${peak.p >= 40 ? ` · <b style="color:var(--accent)">umbrella, ${peak.p}% around ${hh(peak.h)}</b>` : ''}</span>`;
+  const date = day ? data.tomorrow : data.today; const di = (wx.daily.time || []).indexOf(date); if (di < 0) return '';
+  const isNow = !day && date === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+  const code = isNow ? wx.current.weather_code : wx.daily.weather_code?.[di]; if (code === undefined) return '';
+  const [lbl] = WMO(code); const hi = Math.round(wx.daily.temperature_2m_max[di]), lo = Math.round(wx.daily.temperature_2m_min[di]);
+  const ahead = rainAhead(wx, date, isNow ? chi().h : 7); const peak = ahead.reduce((a, b) => (b.p > a.p ? b : a), { h: null, p: 0 });
+  return `<span><b>${isNow ? `${Math.round(wx.current.temperature_2m)}°` : `${hi}°`}</b> ${lbl} · H ${hi}° L ${lo}°${peak.p >= 40 ? ` · <b style="color:var(--accent)">umbrella, ${peak.p}% around ${hh(peak.h)}</b>` : ''}</span>`;
 };
 function renderRitual() {
   if (!ritual || !data) return; const v = derive(data); const k = ritual.kind; const c = chi();
