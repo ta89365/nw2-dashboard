@@ -542,10 +542,23 @@ function derive(d0) {
   for (const k of ['reminders', 'today_list', 'follow_today', 'waiting', 'undated', 'tomorrow_list', 'later']) d[k] = live(d0[k]);
   const dones = [...pending.values()].filter((p) => p.action === 'done').length;
   d.counts = { ...d0.counts, today: d.today_list.length, done_today: d0.counts.done_today === undefined ? undefined : d0.counts.done_today + dones };
+  if (d.counts.workload && d.counts.today !== d.counts.workload.total_n) {
+    // Done / Tomorrow can hide tasks locally until the next refresh.
+    const estimated = d.today_list.filter((t) => t.estimate_min != null);
+    d.counts.workload = { est_min: estimated.reduce((sum, t) => sum + t.estimate_min, 0),
+      est_n: estimated.length, total_n: d.counts.today };
+  }
   const hero = d.reminders[0] || d.today_list[0] || null;
   const rest = d.today_list.filter((t) => t !== hero && t.page_id !== hero?.page_id);
   const overdue = [...d.today_list, ...d.follow_today].filter((t) => odDays(t) > 0).sort((a, b) => odDays(b) - odDays(a));
   return { ...d, hero, rest, overdue, ...deriveNotices(d) };
+}
+
+function workloadSub(w) {
+  if (!w || !w.total_n) return '';
+  if (!w.est_n) return `${w.total_n} · no est`;
+  const hours = w.est_min < 15 ? '<0.5' : `~${Math.round(w.est_min / 30) / 2}`;
+  return `${hours} h · ${w.est_n}/${w.total_n} est`;
 }
 
 // ── 積木 ──
@@ -745,7 +758,7 @@ Object.assign(BLOCKS, {
     const tile = (val, label, cls = '', sub = '', id = '') => { const el = id ? 'button' : 'div';
       return `<${el} class="stat ${cls}${val === 0 && !cls.includes('bad') ? ' zero' : ''}"${id ? ` id="${id}" type="button"` : ''}><div class="v">${val}</div><div class="l">${label}</div><div class="s">${sub}</div></${el}>`; };
     return tile(overdue, 'Overdue', overdue ? 'bad' : '', '', overdue ? 'odbtn' : '')
-      + tile(v.counts.today, 'To-Do Today')
+      + tile(v.counts.today, 'To-Do Today', '', esc(workloadSub(v.counts.workload)))
       + tile(meets.length, meets.length === 1 ? 'Meeting' : 'Meetings', '', nextMeet ? (nextMeet.state === 'live' ? `Till ${nextMeet.end}` : `Next ${nextMeet.start}`) : (meets.length ? 'All done' : ''))
       + (done === undefined ? '' : tile(done, 'Done Today', done ? 'good' : ''))
       + BLOCKS.budget(v);
